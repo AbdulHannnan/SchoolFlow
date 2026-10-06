@@ -4,7 +4,7 @@ A multi-tenant school management platform: attendance, homework/diary, fees,
 and a channel-agnostic notification engine (in-app, email, WhatsApp, web push),
 built for schools in Pakistan.
 
-> Status: **Module 0.1 — project foundation.** See the roadmap for what's next.
+> Status: **Module 0.2 — PostgreSQL + Prisma wired up.** Next: Tailwind + shadcn/ui (0.3). See the roadmap.
 
 ## Tech stack
 
@@ -22,21 +22,49 @@ built for schools in Pakistan.
 
 ## Getting started
 
-Requirements: Node.js 20+ and (from Module 0.2) a PostgreSQL instance.
+Requirements: Node.js 20+ and a PostgreSQL 14+ instance.
 
 ```bash
-# 1. Install dependencies
+# 1. Install dependencies (also runs `prisma generate` via postinstall)
 npm install
 
 # 2. Configure environment
 cp .env.example .env
-#   then fill in the values
+#   then set DATABASE_URL (and other values as modules come online)
 
-# 3. Run the dev server
+# 3. Apply migrations to your database
+npm run db:migrate
+
+# 4. Run the dev server
 npm run dev
 ```
 
 The app runs at http://localhost:3000.
+
+**Local Postgres (macOS / Homebrew):**
+
+```bash
+brew install postgresql@17
+brew services start postgresql@17
+createdb school
+```
+
+The default `DATABASE_URL` in `.env.example` assumes this setup (trust auth, your
+macOS user, no password).
+
+### Database (Prisma 7)
+
+Prisma 7 keeps the connection URL out of `schema.prisma`: the CLI reads it from
+[`prisma.config.ts`](./prisma.config.ts) and the app connects at runtime through a
+node-postgres driver adapter (see [`src/server/db`](./src/server/db)). Common tasks:
+
+| Script                | Purpose                                     |
+| --------------------- | ------------------------------------------- |
+| `npm run db:migrate`  | Create/apply a dev migration                |
+| `npm run db:generate` | Regenerate the Prisma client                |
+| `npm run db:studio`   | Open Prisma Studio                          |
+| `npm run db:deploy`   | Apply migrations (production)               |
+| `npm run db:reset`    | Drop, recreate, and re-migrate the database |
 
 ## Scripts
 

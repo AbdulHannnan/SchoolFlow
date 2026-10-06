@@ -1,0 +1,18 @@
+// Prisma schema for the School Management SaaS.
+// Docs: https://pris.ly/d/prisma-schema
+//
+// Models are added per roadmap module:
+//   Module 1.1 — School (tenant)
+//   Module 1.2 — User (roles, scoped by schoolId)
+//   ...and onward. This baseline establishes the datasource, generator,
+//   and migration pipeline only.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Prisma 7: the connection URL lives in `prisma.config.ts` (for the CLI)
+  // and is passed via a driver adapter to `PrismaClient` at runtime.
+}
