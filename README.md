@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# School Management SaaS
 
-## Getting Started
+A multi-tenant school management platform: attendance, homework/diary, fees,
+and a channel-agnostic notification engine (in-app, email, WhatsApp, web push),
+built for schools in Pakistan.
 
-First, run the development server:
+> Status: **Module 0.1 — project foundation.** See the roadmap for what's next.
+
+## Tech stack
+
+| Concern         | Choice                                             |
+| --------------- | -------------------------------------------------- |
+| Framework       | Next.js 16 (App Router) + React 19                 |
+| Language        | TypeScript                                         |
+| Database        | PostgreSQL + Prisma _(Module 0.2)_                 |
+| Styling / UI    | Tailwind CSS + shadcn/ui _(Module 0.3)_            |
+| Auth            | Auth.js (v5) _(Module 1.3)_                        |
+| Multi-tenancy   | `schoolId` scoping + PostgreSQL RLS _(Module 1.5)_ |
+| Notifications   | In-app, Brevo email, WhatsApp Cloud API, FCM       |
+| Scheduling      | node-cron _(Module 4.5)_                           |
+| Package manager | npm                                                |
+
+## Getting started
+
+Requirements: Node.js 20+ and (from Module 0.2) a PostgreSQL instance.
 
 ```bash
+# 1. Install dependencies
+npm install
+
+# 2. Configure environment
+cp .env.example .env
+#   then fill in the values
+
+# 3. Run the dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app runs at http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Script                 | Purpose                          |
+| ---------------------- | -------------------------------- |
+| `npm run dev`          | Start the dev server             |
+| `npm run build`        | Production build                 |
+| `npm run start`        | Serve the production build       |
+| `npm run lint`         | Lint with ESLint                 |
+| `npm run lint:fix`     | Lint and auto-fix                |
+| `npm run format`       | Format with Prettier             |
+| `npm run format:check` | Check formatting without writing |
+| `npm run type-check`   | Type-check with `tsc --noEmit`   |
 
-## Learn More
+## Project structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+  app/              Next.js App Router routes, layouts, pages
+  components/       Shared React components
+    ui/             shadcn/ui primitives (added in Module 0.3)
+  config/           App configuration and constants
+  lib/              Isomorphic helpers (safe on client and server)
+  server/           Server-only code (never imported by the client)
+    auth/           Auth.js setup, session, RBAC guards
+    db/             Prisma client and data-access helpers
+  types/            Shared TypeScript types
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Roadmap
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The full module-by-module roadmap lives in [`ROADMAP.md`](./ROADMAP.md).
+The MVP ships at the end of Module 6 (Fees).
