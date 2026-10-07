@@ -39,6 +39,7 @@ model School {
   subjects           Subject[]
   teacherAssignments TeacherAssignment[]
   students           Student[]
+  parentStudents     ParentStudent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -78,6 +79,7 @@ model User {
   isActive     Boolean @default(true)
 
   teacherAssignments TeacherAssignment[]
+  parentLinks        ParentStudent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -152,6 +154,8 @@ model Student {
   dateOfBirth DateTime?
   isActive    Boolean   @default(true)
 
+  parentLinks ParentStudent[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -161,6 +165,38 @@ model Student {
   @@index([classId])
   @@index([sectionId])
   @@map("students")
+}
+
+/// Links a parent (a User with role PARENT) to a student. Many-to-many: a
+/// parent can have several children, a student several guardians. Tenant-scoped
+/// via RLS with composite FKs to keep parent and student in the same school.
+model ParentStudent {
+  id        String            @id @default(cuid())
+  schoolId  String
+  school    School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  parentId  String
+  parent    User              @relation(fields: [schoolId, parentId], references: [schoolId, id], onDelete: Cascade)
+  studentId String
+  student   Student           @relation(fields: [schoolId, studentId], references: [schoolId, id], onDelete: Cascade)
+  relation  GuardianRelation?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([parentId, studentId])
+  @@index([schoolId])
+  @@index([parentId])
+  @@index([studentId])
+  @@map("parent_students")
+}
+
+enum GuardianRelation {
+  FATHER
+  MOTHER
+  GUARDIAN
+  OTHER
+
+  @@map("guardian_relation")
 }
 
 enum Gender {
