@@ -2,35 +2,12 @@
 
 import { refresh } from "next/cache";
 import { Prisma } from "@prisma/client";
-import { z } from "zod";
+import type { z } from "zod";
 
 import { requireSuperAdmin } from "@/server/auth/dal";
 import { createSchoolWithHead } from "@/server/schools/onboarding";
-
-export type CreateSchoolState = {
-  status: "idle" | "success" | "error";
-  message?: string;
-  fieldErrors?: Partial<Record<keyof z.infer<typeof schema>, string>>;
-  createdSlug?: string;
-};
-
-export const initialCreateSchoolState: CreateSchoolState = { status: "idle" };
-
-const schema = z.object({
-  schoolName: z.string().trim().min(2, "School name is too short").max(100),
-  slug: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens"),
-  headName: z.string().trim().min(2, "Name is too short").max(100),
-  headEmail: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Enter a valid email"),
-  headPassword: z.string().min(8, "Use at least 8 characters").max(200),
-});
+import { createSchoolSchema } from "@/app/admin/schema";
+import type { CreateSchoolState } from "@/app/admin/form-state";
 
 export async function createSchoolAction(
   _prev: CreateSchoolState,
@@ -40,7 +17,7 @@ export async function createSchoolAction(
   // reachable by direct POST, so re-verify here.
   await requireSuperAdmin();
 
-  const parsed = schema.safeParse({
+  const parsed = createSchoolSchema.safeParse({
     schoolName: formData.get("schoolName"),
     slug: formData.get("slug"),
     headName: formData.get("headName"),
@@ -51,7 +28,7 @@ export async function createSchoolAction(
   if (!parsed.success) {
     const fieldErrors: CreateSchoolState["fieldErrors"] = {};
     for (const issue of parsed.error.issues) {
-      const key = issue.path[0] as keyof z.infer<typeof schema>;
+      const key = issue.path[0] as keyof z.infer<typeof createSchoolSchema>;
       fieldErrors[key] ??= issue.message;
     }
     return { status: "error", message: "Please fix the errors below.", fieldErrors };

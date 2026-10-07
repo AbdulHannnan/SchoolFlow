@@ -1,5 +1,6 @@
 import {
   LayoutDashboard,
+  Layers,
   GraduationCap,
   Users,
   CalendarCheck,
@@ -25,6 +26,7 @@ export type NavItem = {
  */
 export const navItems: NavItem[] = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard, module: "9.1" },
+  { title: "Classes", href: "/classes", icon: Layers, module: "2.1" },
   { title: "Students", href: "/students", icon: GraduationCap, module: "2.4" },
   { title: "Teachers", href: "/teachers", icon: Users, module: "2.3" },
   { title: "Attendance", href: "/attendance", icon: CalendarCheck, module: "3" },

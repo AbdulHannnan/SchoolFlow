@@ -7,7 +7,8 @@ import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createSchoolAction, initialCreateSchoolState } from "@/app/admin/actions";
+import { createSchoolAction } from "@/app/admin/actions";
+import { initialCreateSchoolState } from "@/app/admin/form-state";
 
 /** Turn a school name into a URL-safe slug suggestion. */
 function slugify(value: string): string {

@@ -33,7 +33,9 @@ model School {
   address  String?
   isActive Boolean @default(true)
 
-  users User[]
+  users    User[]
+  classes  Class[]
+  sections Section[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -78,4 +80,43 @@ model User {
   @@unique([schoolId, email])
   @@index([schoolId])
   @@map("users")
+}
+
+/// A grade/year within a school (e.g. "Grade 1"). `level` gives an explicit
+/// ordering for display and for academic-year promotion later (Module 10.4).
+/// Tenant-scoped: RLS pins every row to one school (see the enable_rls_* migration).
+model Class {
+  id       String  @id @default(cuid())
+  schoolId String
+  school   School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name     String
+  level    Int?
+
+  sections Section[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+  @@map("classes")
+}
+
+/// A section/division of a Class (e.g. "A", "B"). `schoolId` is denormalized
+/// from the parent Class so this table can carry its own RLS policy.
+model Section {
+  id       String  @id @default(cuid())
+  schoolId String
+  school   School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId  String
+  class    Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  name     String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([classId, name])
+  @@index([schoolId])
+  @@index([classId])
+  @@map("sections")
 }

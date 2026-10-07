@@ -17,7 +17,7 @@
 
 ## Module 2 — Core School Data
 
-- [ ] 2.1 Classes & Sections
+- [x] 2.1 Classes & Sections
 - [ ] 2.2 Subjects
 - [ ] 2.3 Teacher CRUD + assign to classes/subjects
 - [ ] 2.4 Student CRUD (linked to class/section)
