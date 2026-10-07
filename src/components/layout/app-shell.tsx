@@ -3,8 +3,10 @@ import { Header } from "@/components/layout/header";
 
 /**
  * Basic application shell: a persistent sidebar plus a header over a scrollable
- * content area. Wrap page content with this. In a later module this moves into a
- * route-group layout once authenticated routes exist.
+ * content area. Wrap page content with this. The session read lives inside the
+ * header (behind Suspense), so the shell itself stays in the static shell.
+ * In a later module this moves into a route-group layout once authenticated
+ * routes exist.
  */
 export function AppShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (

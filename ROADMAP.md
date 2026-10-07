@@ -10,7 +10,7 @@
 
 - [x] 1.1 School (tenant) model + migration
 - [x] 1.2 User model with roles, scoped by schoolId; password hashing
-- [ ] 1.3 Auth.js login/logout + session with role + schoolId
+- [x] 1.3 Auth.js login/logout + session with role + schoolId
 - [ ] 1.4 Role-based access control middleware/guards
 - [ ] 1.5 Tenant-resolution middleware + PostgreSQL RLS policies (cross-tenant leak test)
 - [ ] 1.6 SUPER_ADMIN flow: create a school + its first HEAD account (tenant onboarding)

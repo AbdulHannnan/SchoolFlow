@@ -1,24 +1,58 @@
-import { Bell, UserCircle2 } from "lucide-react";
+import { Suspense } from "react";
+import Link from "next/link";
+import { Bell } from "lucide-react";
 
+import { auth } from "@/server/auth";
 import { Button } from "@/components/ui/button";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 
 /**
- * Top bar of the app shell. Holds the page-level actions; user menu and
- * notifications are placeholders until their modules land (auth: 1.3, notifications: 4).
+ * Top bar of the app shell. The static chrome (title) prerenders into the
+ * shell; the user section reads the session at request time, so it streams in
+ * behind a Suspense boundary (required with Cache Components enabled).
  */
 export function Header({ title }: { title: string }) {
   return (
     <header className="bg-background/80 sticky top-0 z-10 flex h-14 items-center gap-4 border-b px-4 backdrop-blur md:px-6">
       <h1 className="text-base font-semibold">{title}</h1>
 
-      <div className="ml-auto flex items-center gap-1">
-        <Button variant="ghost" size="icon" aria-label="Notifications">
-          <Bell />
-        </Button>
-        <Button variant="ghost" size="icon" aria-label="Account">
-          <UserCircle2 />
-        </Button>
+      <div className="ml-auto flex items-center gap-2">
+        <Suspense fallback={<div className="bg-muted h-8 w-24 animate-pulse rounded-md" />}>
+          <HeaderUser />
+        </Suspense>
       </div>
     </header>
   );
+}
+
+async function HeaderUser() {
+  const session = await auth();
+  const user = session?.user;
+
+  if (!user) {
+    return (
+      <Button asChild size="sm">
+        <Link href="/login">Sign in</Link>
+      </Button>
+    );
+  }
+
+  return (
+    <>
+      <Button variant="ghost" size="icon" aria-label="Notifications">
+        <Bell />
+      </Button>
+      <div className="hidden text-right sm:block">
+        <div className="text-sm leading-tight font-medium">{user.name}</div>
+        <div className="text-muted-foreground text-xs">{formatRole(user.role)}</div>
+      </div>
+      <SignOutButton />
+    </>
+  );
+}
+
+/** "SUPER_ADMIN" → "Super admin" */
+function formatRole(role: string): string {
+  const lower = role.toLowerCase().replace(/_/g, " ");
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
 }

@@ -4,7 +4,7 @@ A multi-tenant school management platform: attendance, homework/diary, fees,
 and a channel-agnostic notification engine (in-app, email, WhatsApp, web push),
 built for schools in Pakistan.
 
-> Status: **Module 1.2 — User model with roles + password hashing.** Next: Auth.js login/logout + session (1.3). See the roadmap.
+> Status: **Module 1.3 — Auth.js login/logout + session (role + schoolId).** Next: role-based access control guards (1.4). See the roadmap.
 
 ## Tech stack
 
