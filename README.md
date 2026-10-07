@@ -4,7 +4,7 @@ A multi-tenant school management platform: attendance, homework/diary, fees,
 and a channel-agnostic notification engine (in-app, email, WhatsApp, web push),
 built for schools in Pakistan.
 
-> Status: **Module 2.2 — Subjects (tenant-scoped CRUD on RLS).** Next: Teacher CRUD + assignment to classes/subjects (2.3). See the roadmap.
+> Status: **Module 2.3 — Teacher CRUD + class/subject assignments.** Next: Student CRUD linked to class/section (2.4). See the roadmap.
 
 ## Tech stack
 
@@ -86,6 +86,11 @@ transaction and set `app.current_school_id`; the policies key off it. With no
 tenant context the restricted role sees **nothing** (fail-closed). Create the
 role once with [`prisma/sql/app-role.sql`](./prisma/sql/app-role.sql), then run
 `npm run test:rls` to confirm isolation holds.
+
+Foreign keys bypass RLS, so tenant tables also use **composite foreign keys**:
+parent tables carry `@@unique([schoolId, id])` and child references are
+`(schoolId, parentId) → parent(schoolId, id)`. PostgreSQL then rejects any
+cross-tenant reference outright. Every new tenant table follows this pattern.
 
 ## Scripts
 

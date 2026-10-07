@@ -33,10 +33,11 @@ model School {
   address  String?
   isActive Boolean @default(true)
 
-  users    User[]
-  classes  Class[]
-  sections Section[]
-  subjects Subject[]
+  users              User[]
+  classes            Class[]
+  sections           Section[]
+  subjects           Subject[]
+  teacherAssignments TeacherAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -75,10 +76,13 @@ model User {
   role         Role
   isActive     Boolean @default(true)
 
+  teacherAssignments TeacherAssignment[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([schoolId, email])
+  @@unique([schoolId, id]) // enables composite (tenant-safe) foreign keys
   @@index([schoolId])
   @@map("users")
 }
@@ -93,12 +97,14 @@ model Class {
   name     String
   level    Int?
 
-  sections Section[]
+  sections           Section[]
+  teacherAssignments TeacherAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([schoolId, name])
+  @@unique([schoolId, id]) // enables composite (tenant-safe) foreign keys
   @@index([schoolId])
   @@map("classes")
 }
@@ -110,13 +116,15 @@ model Section {
   schoolId String
   school   School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   classId  String
-  class    Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  // Composite FK: the parent class must belong to the same school.
+  class    Class   @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
   name     String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([classId, name])
+  @@unique([schoolId, id])
   @@index([schoolId])
   @@index([classId])
   @@map("sections")
@@ -132,10 +140,37 @@ model Subject {
   name     String
   code     String?
 
+  teacherAssignments TeacherAssignment[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([schoolId, name])
+  @@unique([schoolId, id]) // enables composite (tenant-safe) foreign keys
   @@index([schoolId])
   @@map("subjects")
+}
+
+/// Links a teacher (a User with role TEACHER) to a subject they teach in a
+/// class — "teaches Mathematics to Grade 1". Tenant-scoped via RLS; all three
+/// references plus `schoolId` live in the same school.
+model TeacherAssignment {
+  id        String @id @default(cuid())
+  schoolId  String
+  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  // Composite FKs: teacher, subject, and class must all be in the same school.
+  teacherId String
+  teacher   User    @relation(fields: [schoolId, teacherId], references: [schoolId, id], onDelete: Cascade)
+  subjectId String
+  subject   Subject @relation(fields: [schoolId, subjectId], references: [schoolId, id], onDelete: Cascade)
+  classId   String
+  class     Class   @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teacherId, subjectId, classId])
+  @@index([schoolId])
+  @@index([teacherId])
+  @@map("teacher_assignments")
 }
