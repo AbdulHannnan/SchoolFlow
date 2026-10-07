@@ -38,6 +38,7 @@ model School {
   sections           Section[]
   subjects           Subject[]
   teacherAssignments TeacherAssignment[]
+  students           Student[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -99,6 +100,7 @@ model Class {
 
   sections           Section[]
   teacherAssignments TeacherAssignment[]
+  students           Student[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -120,6 +122,8 @@ model Section {
   class    Class   @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
   name     String
 
+  students Student[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -128,6 +132,43 @@ model Section {
   @@index([schoolId])
   @@index([classId])
   @@map("sections")
+}
+
+/// A student enrolled in a class (and optionally a section). A tenant record,
+/// not a login account — a STUDENT User may be linked later for the portal.
+/// Composite FKs keep class/section in the same school; the service also checks
+/// the section belongs to the chosen class.
+model Student {
+  id          String    @id @default(cuid())
+  schoolId    String
+  school      School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId     String
+  class       Class     @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
+  sectionId   String?
+  section     Section?  @relation(fields: [schoolId, sectionId], references: [schoolId, id], onDelete: NoAction)
+  name        String
+  rollNumber  String?
+  gender      Gender?
+  dateOfBirth DateTime?
+  isActive    Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([classId, rollNumber])
+  @@unique([schoolId, id])
+  @@index([schoolId])
+  @@index([classId])
+  @@index([sectionId])
+  @@map("students")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+
+  @@map("gender")
 }
 
 /// A subject taught at the school (e.g. "Mathematics"). `code` is an optional
