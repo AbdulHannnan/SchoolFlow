@@ -44,7 +44,7 @@ export function AssignTeacherForm({
         aria-label="Subject"
       >
         <option value="" disabled>
-          Subject…
+          Subject...
         </option>
         {subjects.map((s) => (
           <option key={s.id} value={s.id}>
@@ -54,7 +54,7 @@ export function AssignTeacherForm({
       </select>
       <select name="classId" required defaultValue="" className={selectClass} aria-label="Class">
         <option value="" disabled>
-          Class…
+          Class...
         </option>
         {classes.map((c) => (
           <option key={c.id} value={c.id}>

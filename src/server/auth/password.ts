@@ -11,7 +11,7 @@ import { promisify } from "node:util";
  *   scrypt:<saltHex>:<hashHex>
  *
  * The scheme prefix lets us migrate to different parameters or algorithms later
- * without a data migration — `verifyPassword` can branch on it.
+ * without a data migration - `verifyPassword` can branch on it.
  *
  * Server-only: never import this into client code (it would leak nothing secret
  * but relies on `node:crypto`).

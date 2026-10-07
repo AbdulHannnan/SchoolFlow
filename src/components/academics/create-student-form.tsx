@@ -28,7 +28,7 @@ export function CreateStudentForm({ classes }: { classes: ClassOption[] }) {
 
   useEffect(() => {
     // reset() fires the form's onReset below, which clears the controlled class
-    // select — keeping all state updates out of this effect.
+    // select - keeping all state updates out of this effect.
     if (state.status === "success") formRef.current?.reset();
   }, [state]);
 
@@ -67,7 +67,7 @@ export function CreateStudentForm({ classes }: { classes: ClassOption[] }) {
           aria-invalid={!!errors.classId}
         >
           <option value="" disabled>
-            Select class…
+            Select class...
           </option>
           {classes.map((c) => (
             <option key={c.id} value={c.id}>
@@ -103,7 +103,7 @@ export function CreateStudentForm({ classes }: { classes: ClassOption[] }) {
           Gender <span className="text-muted-foreground font-normal">(optional)</span>
         </Label>
         <select id="student-gender" name="gender" defaultValue="" className={selectClass}>
-          <option value="">—</option>
+          <option value="">-</option>
           <option value="MALE">Male</option>
           <option value="FEMALE">Female</option>
           <option value="OTHER">Other</option>
@@ -119,7 +119,7 @@ export function CreateStudentForm({ classes }: { classes: ClassOption[] }) {
 
       <div className="lg:col-span-3">
         <Button type="submit" disabled={pending}>
-          {pending ? "Adding…" : "Add student"}
+          {pending ? "Adding..." : "Add student"}
         </Button>
         {state.status === "error" && state.message ? (
           <span className="text-destructive ml-3 text-sm">{state.message}</span>

@@ -14,7 +14,7 @@ import { listSubjects } from "@/server/academics/subjects";
 import { listClassesWithSections } from "@/server/academics/classes";
 
 export const metadata: Metadata = {
-  title: "Teachers · School Management",
+  title: "Teachers - School Management",
 };
 
 export default function TeachersPage() {
@@ -71,7 +71,7 @@ async function TeachersContent() {
                   ) : (
                     teacher.teacherAssignments.map((a) => (
                       <Badge key={a.id} variant="secondary" className="gap-1 pr-1">
-                        {a.subject.name} · {a.class.name}
+                        {a.subject.name} - {a.class.name}
                         <DeleteButton
                           action={deleteAssignmentAction}
                           id={a.id}

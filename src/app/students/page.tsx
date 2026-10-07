@@ -12,7 +12,7 @@ import { listStudents } from "@/server/academics/students";
 import { listClassesWithSections } from "@/server/academics/classes";
 
 export const metadata: Metadata = {
-  title: "Students · School Management",
+  title: "Students - School Management",
 };
 
 export default function StudentsPage() {
@@ -44,7 +44,7 @@ async function StudentsContent() {
         <CardContent>
           {classes.length === 0 ? (
             <p className="text-muted-foreground text-sm">
-              Add a class first — students must be enrolled in one.
+              Add a class first - students must be enrolled in one.
             </p>
           ) : (
             <CreateStudentForm classes={classOptions} />

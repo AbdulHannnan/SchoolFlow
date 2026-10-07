@@ -8,7 +8,7 @@ import { hashPassword } from "@/server/auth/password";
  *
  * Runs on the OWNER connection (bypasses RLS): a new school and its first user
  * can't be created from inside any tenant's RLS context. The caller must be a
- * SUPER_ADMIN — enforced in the Server Action, not here.
+ * SUPER_ADMIN - enforced in the Server Action, not here.
  */
 export type CreateSchoolInput = {
   schoolName: string;

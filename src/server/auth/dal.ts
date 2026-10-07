@@ -13,15 +13,15 @@ import { withTenant } from "@/server/db/tenant";
 type SessionUser = Session["user"];
 
 /**
- * Data Access Layer (DAL) — the single place authorization is enforced.
+ * Data Access Layer (DAL) - the single place authorization is enforced.
  *
  * With Cache Components enabled these all read the session (cookies) at request
  * time, so they must be called from inside a `<Suspense>` boundary (e.g. a
  * component the page streams in), never at the top level of a layout/page.
  *
  * Two kinds of failure, two behaviours:
- *   - not signed in        → `redirect("/login")`
- *   - signed in, wrong role → `forbidden()` (renders the 403 boundary)
+ *   - not signed in        -> `redirect("/login")`
+ *   - signed in, wrong role -> `forbidden()` (renders the 403 boundary)
  *
  * `verifySession` is wrapped in React's `cache` so repeated calls within one
  * request resolve the session once.
@@ -58,7 +58,7 @@ export async function requireSuperAdmin(): Promise<SessionUser> {
 
 /**
  * Require a tenant-scoped user and return their `schoolId` narrowed to a
- * non-null string. SUPER_ADMIN (no school) is rejected with `forbidden()` —
+ * non-null string. SUPER_ADMIN (no school) is rejected with `forbidden()` -
  * use this to guard anything that reads or writes one school's data.
  */
 export async function requireSchool(): Promise<{ user: SessionUser; schoolId: string }> {
@@ -77,7 +77,7 @@ export function hasRole(user: SessionUser | null, ...allowed: Role[]): boolean {
 /**
  * Resolve the active tenant from the session and run `fn` inside that school's
  * RLS context. This is how tenant-scoped data access happens throughout the
- * app — the schoolId is never taken from the client, only from the session.
+ * app - the schoolId is never taken from the client, only from the session.
  *
  *   const classes = await withCurrentTenant((tx) => tx.class.findMany());
  */

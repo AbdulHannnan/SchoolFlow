@@ -4,7 +4,7 @@
 --   psql -d school -f prisma/sql/app-role.sql
 --
 -- The app connects as this NON-superuser, NON-owner role at runtime
--- (APP_DATABASE_URL) so PostgreSQL Row-Level Security actually applies — a
+-- (APP_DATABASE_URL) so PostgreSQL Row-Level Security actually applies - a
 -- superuser (and the table owner) would otherwise bypass RLS. Migrations,
 -- auth lookups, and SUPER_ADMIN operations keep using the owner role
 -- (DATABASE_URL), which bypasses RLS by design.

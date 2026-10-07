@@ -8,7 +8,7 @@ import { twMerge } from "tailwind-merge";
 
 /**
  * Merge class names conditionally, resolving conflicting Tailwind utilities so
- * the last one wins (e.g. `cn("p-2", "p-4")` → `"p-4"`). Used by shadcn/ui
+ * the last one wins (e.g. `cn("p-2", "p-4")` -> `"p-4"`). Used by shadcn/ui
  * components and anywhere we compose Tailwind classes.
  */
 export function cn(...inputs: ClassValue[]): string {

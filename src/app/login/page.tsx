@@ -6,7 +6,7 @@ import { auth } from "@/server/auth";
 import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = {
-  title: "Sign in · School Management",
+  title: "Sign in - School Management",
 };
 
 // This route gates on the session (redirects if already signed in), so it

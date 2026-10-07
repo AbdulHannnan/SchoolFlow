@@ -9,14 +9,14 @@ import { verifyPassword } from "@/server/auth/password";
  *
  * We use the Credentials provider with a JWT session strategy (database
  * sessions aren't supported alongside Credentials). The session token carries
- * the two facts every tenant-scoped query needs — the user's `role` and
- * `schoolId` — so route guards (Module 1.4) and tenant resolution (Module 1.5)
+ * the two facts every tenant-scoped query needs - the user's `role` and
+ * `schoolId` - so route guards (Module 1.4) and tenant resolution (Module 1.5)
  * can read them without an extra DB round-trip.
  *
  * Tenant login vs. platform login:
  *   - A tenant user signs in with their school's `slug` (later supplied
  *     automatically by the tenant middleware; for now it's a login field).
- *   - A SUPER_ADMIN signs in with no slug — they have `schoolId = null`.
+ *   - A SUPER_ADMIN signs in with no slug - they have `schoolId = null`.
  */
 export const authConfig = {
   session: { strategy: "jwt" },

@@ -8,7 +8,7 @@ import { requireSuperAdmin } from "@/server/auth/dal";
 import { prisma } from "@/server/db";
 
 export const metadata: Metadata = {
-  title: "Administration · School Management",
+  title: "Administration - School Management",
 };
 
 export default function AdminPage() {
@@ -22,7 +22,7 @@ export default function AdminPage() {
 }
 
 async function AdminContent() {
-  // SUPER_ADMIN only — renders the 403 boundary otherwise.
+  // SUPER_ADMIN only - renders the 403 boundary otherwise.
   await requireSuperAdmin();
 
   // Owner connection (bypasses RLS) so the platform operator sees every tenant.
@@ -75,7 +75,7 @@ async function AdminContent() {
                     </span>
                   </div>
                   <CardDescription>
-                    <code>{school.slug}</code> · {school._count.users}{" "}
+                    <code>{school.slug}</code> - {school._count.users}{" "}
                     {school._count.users === 1 ? "user" : "users"}
                   </CardDescription>
                 </CardHeader>

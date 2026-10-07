@@ -28,7 +28,7 @@ async function DashboardContent() {
         <div>
           <h2 className="text-lg font-semibold">Welcome, {user.name}</h2>
           <p className="text-muted-foreground text-sm">
-            Module 1 complete — multi-tenant auth, RBAC, RLS isolation, and tenant onboarding.
+            Module 1 complete - multi-tenant auth, RBAC, RLS isolation, and tenant onboarding.
           </p>
         </div>
         {hasRole(user, "SUPER_ADMIN") ? (

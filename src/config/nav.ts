@@ -22,7 +22,7 @@ export type NavItem = {
 };
 
 /**
- * Primary sidebar navigation. Entries mirror the product roadmap — most routes
+ * Primary sidebar navigation. Entries mirror the product roadmap - most routes
  * are placeholders that get real pages as their module lands. Keep this list as
  * the single source of truth for the shell's navigation.
  */

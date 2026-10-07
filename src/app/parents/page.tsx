@@ -13,7 +13,7 @@ import { listParents } from "@/server/academics/parents";
 import { listStudents } from "@/server/academics/students";
 
 export const metadata: Metadata = {
-  title: "Parents · School Management",
+  title: "Parents - School Management",
 };
 
 export default function ParentsPage() {
@@ -37,7 +37,7 @@ async function ParentsContent() {
 
   const studentOptions = students.map((s) => ({
     id: s.id,
-    label: `${s.name} — ${s.class.name}${s.section ? ` ${s.section.name}` : ""}`,
+    label: `${s.name} - ${s.class.name}${s.section ? ` ${s.section.name}` : ""}`,
   }));
 
   return (
@@ -75,8 +75,8 @@ async function ParentsContent() {
                       <Badge key={link.id} variant="secondary" className="gap-1 pr-1">
                         {link.student.name}
                         <span className="text-muted-foreground">
-                          · {link.student.class.name}
-                          {relationLabel(link.relation) ? ` · ${relationLabel(link.relation)}` : ""}
+                          - {link.student.class.name}
+                          {relationLabel(link.relation) ? ` - ${relationLabel(link.relation)}` : ""}
                         </span>
                         <DeleteButton
                           action={unlinkStudentAction}

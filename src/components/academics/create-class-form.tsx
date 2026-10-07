@@ -37,7 +37,7 @@ export function CreateClassForm() {
         <Input id="class-level" name="level" type="number" min={0} max={20} className="w-24" />
       </div>
       <Button type="submit" disabled={pending}>
-        {pending ? "Adding…" : "Add class"}
+        {pending ? "Adding..." : "Add class"}
       </Button>
       {state.status === "error" && (errors.name || errors.level) ? (
         <p role="alert" className="text-destructive w-full text-sm">

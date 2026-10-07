@@ -6,7 +6,7 @@ import { PrismaClient, type Prisma } from "@prisma/client";
  *
  * `appPrisma` connects as the restricted `school_app` role (APP_DATABASE_URL),
  * which is subject to Row-Level Security. Never query it directly for tenant
- * data — go through `withTenant`, which opens a transaction and sets
+ * data - go through `withTenant`, which opens a transaction and sets
  * `app.current_school_id` so the RLS policies scope every row to that school.
  *
  * Without the setting the policies match no rows (fail-closed), so a stray

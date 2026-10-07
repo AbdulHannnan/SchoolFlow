@@ -11,7 +11,7 @@ import { requireRole } from "@/server/auth/dal";
 import { listSubjects } from "@/server/academics/subjects";
 
 export const metadata: Metadata = {
-  title: "Subjects · School Management",
+  title: "Subjects - School Management",
 };
 
 export default function SubjectsPage() {

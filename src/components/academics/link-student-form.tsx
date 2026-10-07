@@ -40,7 +40,7 @@ export function LinkStudentForm({
         aria-label="Student"
       >
         <option value="" disabled>
-          Student…
+          Student...
         </option>
         {students.map((s) => (
           <option key={s.id} value={s.id}>
@@ -49,7 +49,7 @@ export function LinkStudentForm({
         ))}
       </select>
       <select name="relation" defaultValue="" className={selectClass} aria-label="Relation">
-        <option value="">Relation…</option>
+        <option value="">Relation...</option>
         <option value="FATHER">Father</option>
         <option value="MOTHER">Mother</option>
         <option value="GUARDIAN">Guardian</option>

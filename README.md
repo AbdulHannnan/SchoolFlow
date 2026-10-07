@@ -4,7 +4,7 @@ A multi-tenant school management platform: attendance, homework/diary, fees,
 and a channel-agnostic notification engine (in-app, email, WhatsApp, web push),
 built for schools in Pakistan.
 
-> Status: **Module 2 complete — core school data (classes, subjects, teachers, students, parents).** Next: Module 3 — student attendance. See the roadmap.
+> Status: **Module 2 complete - core school data (classes, subjects, teachers, students, parents).** Next: Module 3 - student attendance. See the roadmap.
 
 ## Tech stack
 
@@ -75,9 +75,9 @@ node-postgres driver adapter (see [`src/server/db`](./src/server/db)). Common ta
 Tenant isolation is enforced by **PostgreSQL Row-Level Security**, not just app code.
 Two database roles are used:
 
-- **`DATABASE_URL`** — the owner role. Runs migrations, auth lookups, and
+- **`DATABASE_URL`** - the owner role. Runs migrations, auth lookups, and
   SUPER_ADMIN operations. Bypasses RLS by design.
-- **`APP_DATABASE_URL`** — a non-superuser role (`school_app`) the app uses for
+- **`APP_DATABASE_URL`** - a non-superuser role (`school_app`) the app uses for
   tenant data. RLS policies scope every row to the current school.
 
 Tenant queries go through `withCurrentTenant()` / `withTenant()`
@@ -89,7 +89,7 @@ role once with [`prisma/sql/app-role.sql`](./prisma/sql/app-role.sql), then run
 
 Foreign keys bypass RLS, so tenant tables also use **composite foreign keys**:
 parent tables carry `@@unique([schoolId, id])` and child references are
-`(schoolId, parentId) → parent(schoolId, id)`. PostgreSQL then rejects any
+`(schoolId, parentId) -> parent(schoolId, id)`. PostgreSQL then rejects any
 cross-tenant reference outright. Every new tenant table follows this pattern.
 
 ## Scripts

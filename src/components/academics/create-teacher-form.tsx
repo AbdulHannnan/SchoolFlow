@@ -48,7 +48,7 @@ export function CreateTeacherForm() {
       </div>
       <div className="sm:col-span-3">
         <Button type="submit" disabled={pending}>
-          {pending ? "Adding…" : "Add teacher"}
+          {pending ? "Adding..." : "Add teacher"}
         </Button>
       </div>
     </form>

@@ -29,7 +29,7 @@ export async function createSection(input: { classId: string; name: string }) {
   const { schoolId } = await requireSchool();
   return withTenant(schoolId, async (tx) => {
     // Within the tenant context this returns the class only if it belongs to
-    // the caller's school — prevents attaching a section to another tenant's class.
+    // the caller's school - prevents attaching a section to another tenant's class.
     const parent = await tx.class.findUnique({ where: { id: input.classId } });
     if (!parent) {
       throw new Error("Class not found");

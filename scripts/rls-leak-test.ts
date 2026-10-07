@@ -2,7 +2,7 @@
  * Cross-tenant leak test for Row-Level Security (Module 1.5).
  *
  * Seeds two schools (owner connection, which bypasses RLS), then proves that
- * the restricted `school_app` role — used via `withTenant` — can only ever see
+ * the restricted `school_app` role - used via `withTenant` - can only ever see
  * and write its own school's rows. Exits non-zero if any assertion fails.
  *
  *   npm run test:rls
@@ -16,7 +16,7 @@ import { appPrisma, withTenant } from "../src/server/db/tenant.ts";
 let failures = 0;
 
 function check(label: string, pass: boolean, detail = "") {
-  console.log(`${pass ? "✓ PASS" : "✗ FAIL"}  ${label}${detail ? `  — ${detail}` : ""}`);
+  console.log(`${pass ? "PASS" : "FAIL"}  ${label}${detail ? `  - ${detail}` : ""}`);
   if (!pass) failures++;
 }
 

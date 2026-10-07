@@ -50,7 +50,7 @@ async function HeaderUser() {
   );
 }
 
-/** "SUPER_ADMIN" → "Super admin" */
+/** "SUPER_ADMIN" -> "Super admin" */
 function formatRole(role: string): string {
   const lower = role.toLowerCase().replace(/_/g, " ");
   return lower.charAt(0).toUpperCase() + lower.slice(1);

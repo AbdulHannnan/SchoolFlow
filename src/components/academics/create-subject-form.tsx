@@ -36,7 +36,7 @@ export function CreateSubjectForm() {
         <Input id="subject-code" name="code" placeholder="MATH" className="w-32" />
       </div>
       <Button type="submit" disabled={pending}>
-        {pending ? "Adding…" : "Add subject"}
+        {pending ? "Adding..." : "Add subject"}
       </Button>
       {state.status === "error" && errors.name ? (
         <p role="alert" className="text-destructive w-full text-sm">

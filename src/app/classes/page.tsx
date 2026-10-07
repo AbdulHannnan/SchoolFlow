@@ -12,7 +12,7 @@ import { requireRole } from "@/server/auth/dal";
 import { listClassesWithSections } from "@/server/academics/classes";
 
 export const metadata: Metadata = {
-  title: "Classes · School Management",
+  title: "Classes - School Management",
 };
 
 export default function ClassesPage() {

@@ -112,7 +112,7 @@ export function CreateSchoolForm() {
       ) : null}
 
       <Button type="submit" disabled={pending}>
-        {pending ? "Creating…" : "Create school"}
+        {pending ? "Creating..." : "Create school"}
       </Button>
     </form>
   );

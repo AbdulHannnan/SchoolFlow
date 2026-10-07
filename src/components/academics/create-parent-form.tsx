@@ -42,7 +42,7 @@ export function CreateParentForm() {
       </div>
       <div className="sm:col-span-3">
         <Button type="submit" disabled={pending}>
-          {pending ? "Adding…" : "Add parent"}
+          {pending ? "Adding..." : "Add parent"}
         </Button>
       </div>
     </form>
