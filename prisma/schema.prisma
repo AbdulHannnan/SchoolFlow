@@ -36,6 +36,7 @@ model School {
   users    User[]
   classes  Class[]
   sections Section[]
+  subjects Subject[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -119,4 +120,22 @@ model Section {
   @@index([schoolId])
   @@index([classId])
   @@map("sections")
+}
+
+/// A subject taught at the school (e.g. "Mathematics"). `code` is an optional
+/// short identifier (e.g. "MATH"). Tenant-scoped via RLS. Teacher/class
+/// assignment arrives in Module 2.3.
+model Subject {
+  id       String  @id @default(cuid())
+  schoolId String
+  school   School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name     String
+  code     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+  @@map("subjects")
 }

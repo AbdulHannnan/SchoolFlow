@@ -4,7 +4,7 @@ A multi-tenant school management platform: attendance, homework/diary, fees,
 and a channel-agnostic notification engine (in-app, email, WhatsApp, web push),
 built for schools in Pakistan.
 
-> Status: **Module 2.1 — Classes & Sections (tenant-scoped CRUD on RLS).** Next: Subjects (2.2). See the roadmap.
+> Status: **Module 2.2 — Subjects (tenant-scoped CRUD on RLS).** Next: Teacher CRUD + assignment to classes/subjects (2.3). See the roadmap.
 
 ## Tech stack
 
