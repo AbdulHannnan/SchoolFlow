@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { Bell } from "lucide-react";
 
-import { auth } from "@/server/auth";
+import { getSessionUser } from "@/server/auth/dal";
 import { Button } from "@/components/ui/button";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 
@@ -26,8 +26,7 @@ export function Header({ title }: { title: string }) {
 }
 
 async function HeaderUser() {
-  const session = await auth();
-  const user = session?.user;
+  const user = await getSessionUser();
 
   if (!user) {
     return (
