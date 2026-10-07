@@ -16,3 +16,25 @@ datasource db {
   // Prisma 7: the connection URL lives in `prisma.config.ts` (for the CLI)
   // and is passed via a driver adapter to `PrismaClient` at runtime.
 }
+
+/// A School is the tenant. Every tenant-scoped record (users, students,
+/// attendance, fees, …) will reference a School via `schoolId`, and in
+/// Module 1.5 PostgreSQL Row-Level Security pins queries to one tenant.
+///
+/// `slug` is the stable, URL-safe handle used to resolve the active tenant
+/// (subdomain or path). `isActive` lets a SUPER_ADMIN suspend a tenant
+/// without deleting its data.
+model School {
+  id       String  @id @default(cuid())
+  name     String
+  slug     String  @unique
+  email    String?
+  phone    String?
+  address  String?
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("schools")
+}
