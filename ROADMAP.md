@@ -9,7 +9,7 @@
 ## Module 1 — Multi-tenancy & Auth (the core — get this right)
 
 - [x] 1.1 School (tenant) model + migration
-- [ ] 1.2 User model with roles, scoped by schoolId; password hashing
+- [x] 1.2 User model with roles, scoped by schoolId; password hashing
 - [ ] 1.3 Auth.js login/logout + session with role + schoolId
 - [ ] 1.4 Role-based access control middleware/guards
 - [ ] 1.5 Tenant-resolution middleware + PostgreSQL RLS policies (cross-tenant leak test)

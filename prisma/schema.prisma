@@ -33,8 +33,49 @@ model School {
   address  String?
   isActive Boolean @default(true)
 
+  users User[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("schools")
+}
+
+/// Roles are hierarchical in practice but stored flat; access control
+/// (Module 1.4) maps each role to its permissions.
+///   SUPER_ADMIN — platform operator; not tied to any tenant (schoolId null)
+///   HEAD        — school owner/principal; full control within their school
+///   TEACHER     — marks attendance, posts homework, enters grades
+///   PARENT      — views their children's data
+///   STUDENT     — views their own data
+enum Role {
+  SUPER_ADMIN
+  HEAD
+  TEACHER
+  PARENT
+  STUDENT
+
+  @@map("role")
+}
+
+/// An authenticated account, scoped to one School via `schoolId`. The only
+/// exception is SUPER_ADMIN, whose `schoolId` is null because it operates
+/// above any single tenant. Email is unique *per school* (compound unique),
+/// so the same address can belong to a parent at two different schools.
+model User {
+  id           String  @id @default(cuid())
+  schoolId     String?
+  school       School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  email        String
+  passwordHash String
+  name         String
+  role         Role
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, email])
+  @@index([schoolId])
+  @@map("users")
 }
