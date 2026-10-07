@@ -4,7 +4,7 @@ A multi-tenant school management platform: attendance, homework/diary, fees,
 and a channel-agnostic notification engine (in-app, email, WhatsApp, web push),
 built for schools in Pakistan.
 
-> Status: **Module 1.4 — Role-based access control guards (Data Access Layer).** Next: tenant-resolution middleware + PostgreSQL RLS (1.5). See the roadmap.
+> Status: **Module 1.5 — Tenant isolation via PostgreSQL RLS (cross-tenant leak test passing).** Next: SUPER_ADMIN onboarding — create a school + its first HEAD (1.6). See the roadmap.
 
 ## Tech stack
 
@@ -30,12 +30,15 @@ npm install
 
 # 2. Configure environment
 cp .env.example .env
-#   then set DATABASE_URL (and other values as modules come online)
+#   then set DATABASE_URL and APP_DATABASE_URL (and other values as modules come online)
 
-# 3. Apply migrations to your database
+# 3. Create the restricted app role (once per database; see Multi-tenancy below)
+psql -d school -f prisma/sql/app-role.sql
+
+# 4. Apply migrations to your database
 npm run db:migrate
 
-# 4. Run the dev server
+# 5. Run the dev server
 npm run dev
 ```
 
@@ -65,6 +68,24 @@ node-postgres driver adapter (see [`src/server/db`](./src/server/db)). Common ta
 | `npm run db:studio`   | Open Prisma Studio                          |
 | `npm run db:deploy`   | Apply migrations (production)               |
 | `npm run db:reset`    | Drop, recreate, and re-migrate the database |
+| `npm run test:rls`    | Cross-tenant leak test (verifies RLS isolation) |
+
+### Multi-tenancy (Module 1.5)
+
+Tenant isolation is enforced by **PostgreSQL Row-Level Security**, not just app code.
+Two database roles are used:
+
+- **`DATABASE_URL`** — the owner role. Runs migrations, auth lookups, and
+  SUPER_ADMIN operations. Bypasses RLS by design.
+- **`APP_DATABASE_URL`** — a non-superuser role (`school_app`) the app uses for
+  tenant data. RLS policies scope every row to the current school.
+
+Tenant queries go through `withCurrentTenant()` / `withTenant()`
+([`src/server/db/tenant.ts`](./src/server/db/tenant.ts)), which open a
+transaction and set `app.current_school_id`; the policies key off it. With no
+tenant context the restricted role sees **nothing** (fail-closed). Create the
+role once with [`prisma/sql/app-role.sql`](./prisma/sql/app-role.sql), then run
+`npm run test:rls` to confirm isolation holds.
 
 ## Scripts
 

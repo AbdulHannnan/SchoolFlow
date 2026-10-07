@@ -16,6 +16,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset",
+    "test:rls": "node --env-file=.env scripts/rls-leak-test.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

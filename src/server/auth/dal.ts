@@ -5,7 +5,10 @@ import { forbidden, redirect } from "next/navigation";
 import type { Role } from "@prisma/client";
 import type { Session } from "next-auth";
 
+import type { Prisma } from "@prisma/client";
+
 import { auth } from "@/server/auth";
+import { withTenant } from "@/server/db/tenant";
 
 type SessionUser = Session["user"];
 
@@ -69,4 +72,18 @@ export async function requireSchool(): Promise<{ user: SessionUser; schoolId: st
 /** Non-throwing role check for conditional UI (e.g. hiding a nav item). */
 export function hasRole(user: SessionUser | null, ...allowed: Role[]): boolean {
   return user != null && allowed.includes(user.role);
+}
+
+/**
+ * Resolve the active tenant from the session and run `fn` inside that school's
+ * RLS context. This is how tenant-scoped data access happens throughout the
+ * app — the schoolId is never taken from the client, only from the session.
+ *
+ *   const classes = await withCurrentTenant((tx) => tx.class.findMany());
+ */
+export async function withCurrentTenant<T>(
+  fn: (tx: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+  const { schoolId } = await requireSchool();
+  return withTenant(schoolId, fn);
 }
