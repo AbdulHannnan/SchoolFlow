@@ -13,7 +13,7 @@
 - [x] 1.3 Auth.js login/logout + session with role + schoolId
 - [x] 1.4 Role-based access control middleware/guards
 - [x] 1.5 Tenant-resolution middleware + PostgreSQL RLS policies (cross-tenant leak test)
-- [ ] 1.6 SUPER_ADMIN flow: create a school + its first HEAD account (tenant onboarding)
+- [x] 1.6 SUPER_ADMIN flow: create a school + its first HEAD account (tenant onboarding)
 
 ## Module 2 — Core School Data
 

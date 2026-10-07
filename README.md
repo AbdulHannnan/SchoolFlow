@@ -4,7 +4,7 @@ A multi-tenant school management platform: attendance, homework/diary, fees,
 and a channel-agnostic notification engine (in-app, email, WhatsApp, web push),
 built for schools in Pakistan.
 
-> Status: **Module 1.5 — Tenant isolation via PostgreSQL RLS (cross-tenant leak test passing).** Next: SUPER_ADMIN onboarding — create a school + its first HEAD (1.6). See the roadmap.
+> Status: **Module 1 complete — multi-tenancy & auth (tenant onboarding, RBAC, RLS isolation).** Next: Module 2 — core school data (classes, subjects, teachers, students, parents). See the roadmap.
 
 ## Tech stack
 
@@ -61,13 +61,13 @@ Prisma 7 keeps the connection URL out of `schema.prisma`: the CLI reads it from
 [`prisma.config.ts`](./prisma.config.ts) and the app connects at runtime through a
 node-postgres driver adapter (see [`src/server/db`](./src/server/db)). Common tasks:
 
-| Script                | Purpose                                     |
-| --------------------- | ------------------------------------------- |
-| `npm run db:migrate`  | Create/apply a dev migration                |
-| `npm run db:generate` | Regenerate the Prisma client                |
-| `npm run db:studio`   | Open Prisma Studio                          |
-| `npm run db:deploy`   | Apply migrations (production)               |
-| `npm run db:reset`    | Drop, recreate, and re-migrate the database |
+| Script                | Purpose                                         |
+| --------------------- | ----------------------------------------------- |
+| `npm run db:migrate`  | Create/apply a dev migration                    |
+| `npm run db:generate` | Regenerate the Prisma client                    |
+| `npm run db:studio`   | Open Prisma Studio                              |
+| `npm run db:deploy`   | Apply migrations (production)                   |
+| `npm run db:reset`    | Drop, recreate, and re-migrate the database     |
 | `npm run test:rls`    | Cross-tenant leak test (verifies RLS isolation) |
 
 ### Multi-tenancy (Module 1.5)
