@@ -4,7 +4,7 @@
 
 - [x] 0.1 Init Next.js + TypeScript repo, folder structure, ESLint/Prettier, .env.example, README
 - [x] 0.2 Add PostgreSQL + Prisma, DB connection, base config, first migration runs clean
-- [ ] 0.3 Add Tailwind + shadcn/ui, a basic app shell/layout
+- [x] 0.3 Add Tailwind + shadcn/ui, a basic app shell/layout
 
 ## Module 1 — Multi-tenancy & Auth (the core — get this right)
 

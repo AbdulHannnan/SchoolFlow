@@ -4,7 +4,7 @@ A multi-tenant school management platform: attendance, homework/diary, fees,
 and a channel-agnostic notification engine (in-app, email, WhatsApp, web push),
 built for schools in Pakistan.
 
-> Status: **Module 0.2 — PostgreSQL + Prisma wired up.** Next: Tailwind + shadcn/ui (0.3). See the roadmap.
+> Status: **Module 0.3 — Tailwind + shadcn/ui + app shell in place.** Next: Module 1 (multi-tenancy & auth). See the roadmap.
 
 ## Tech stack
 
