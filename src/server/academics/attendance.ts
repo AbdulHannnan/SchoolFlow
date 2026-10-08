@@ -1,6 +1,8 @@
 import "server-only";
 
+import type { Prisma } from "@prisma/client";
 import type { AttendanceStatus } from "@prisma/client";
+import type { Session } from "next-auth";
 
 import { requireSchool } from "@/server/auth/dal";
 import { withTenant } from "@/server/db/tenant";
@@ -16,6 +18,41 @@ export function toDateOnly(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 
+/**
+ * A HEAD may mark any class; a TEACHER only classes they're assigned to. This
+ * is the row-level authorization behind the route's role gate — it runs inside
+ * the tenant context so the lookup can't see another school.
+ */
+async function assertCanMarkClass(
+  tx: Prisma.TransactionClient,
+  user: Session["user"],
+  classId: string,
+): Promise<void> {
+  if (user.role === "HEAD") return;
+  const assignment = await tx.teacherAssignment.findFirst({
+    where: { teacherId: user.id, classId },
+    select: { id: true },
+  });
+  if (!assignment) throw new Error("You are not assigned to this class");
+}
+
+/** Classes the current user may take attendance for (HEAD: all; TEACHER: assigned). */
+export async function listMarkableClasses() {
+  const { user, schoolId } = await requireSchool();
+  return withTenant(schoolId, (tx) =>
+    tx.class.findMany({
+      where:
+        user.role === "TEACHER" ? { teacherAssignments: { some: { teacherId: user.id } } } : {},
+      orderBy: [{ level: "asc" }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        sections: { orderBy: { name: "asc" }, select: { id: true, name: true } },
+      },
+    }),
+  );
+}
+
 export type AttendanceEntry = {
   studentId: string;
   status: AttendanceStatus;
@@ -28,7 +65,7 @@ export async function getClassAttendanceForDate(input: {
   sectionId: string | null;
   date: Date;
 }) {
-  const { schoolId } = await requireSchool();
+  const { user, schoolId } = await requireSchool();
   const date = toDateOnly(input.date);
   return withTenant(schoolId, async (tx) => {
     const cls = await tx.class.findUnique({
@@ -36,6 +73,7 @@ export async function getClassAttendanceForDate(input: {
       select: { id: true, name: true },
     });
     if (!cls) throw new Error("Class not found");
+    await assertCanMarkClass(tx, user, input.classId);
 
     const students = await tx.student.findMany({
       where: {
@@ -89,6 +127,7 @@ export async function saveClassAttendance(input: {
   return withTenant(schoolId, async (tx) => {
     const cls = await tx.class.findUnique({ where: { id: input.classId } });
     if (!cls) throw new Error("Class not found");
+    await assertCanMarkClass(tx, user, input.classId);
 
     // Build the set of students that legitimately belong to this class (and
     // section, if one was chosen) within the tenant.
