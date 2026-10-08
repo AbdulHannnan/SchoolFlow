@@ -41,6 +41,7 @@ model School {
   students           Student[]
   parentStudents     ParentStudent[]
   attendance         Attendance[]
+  notifications      Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -82,6 +83,7 @@ model User {
   teacherAssignments TeacherAssignment[]
   parentLinks        ParentStudent[]
   attendanceMarked   Attendance[]
+  notifications      Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -302,4 +304,44 @@ enum AttendanceStatus {
   LEAVE
 
   @@map("attendance_status")
+}
+
+/// A delivered notification for one recipient (Module 4.1). This is the in-app
+/// channel's record: one row per (event, recipient). The notification engine is
+/// channel-agnostic — an event is dispatched once and each enabled channel
+/// (in-app now; email/WhatsApp/push in Modules 4.2-4.4) delivers it its own way;
+/// in-app delivery writes a row here. `type` classifies the originating event so
+/// the UI can group/route it; `data` carries structured context (e.g. the
+/// student and date behind an attendance alert) for rendering deep links without
+/// another lookup. Tenant-scoped via RLS; the recipient is pinned to the same
+/// school through a composite FK.
+model Notification {
+  id          String           @id @default(cuid())
+  schoolId    String
+  school      School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User             @relation(fields: [schoolId, recipientId], references: [schoolId, id], onDelete: Cascade)
+  type        NotificationType @default(GENERAL)
+  title       String
+  body        String
+  data        Json?
+  readAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId])
+  // Serves the per-recipient inbox query and the unread-count badge.
+  @@index([schoolId, recipientId, readAt, createdAt])
+  @@map("notifications")
+}
+
+/// The kind of event a notification came from. Starts small and grows as the
+/// modules that emit events land (homework in Module 5, fees in Module 6, …).
+/// GENERAL is the default for ad-hoc/system messages with no dedicated type.
+enum NotificationType {
+  GENERAL
+  ATTENDANCE_ABSENT
+
+  @@map("notification_type")
 }

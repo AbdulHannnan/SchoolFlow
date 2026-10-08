@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Bell } from "lucide-react";
 
 import { getSessionUser } from "@/server/auth/dal";
+import { countMyUnread } from "@/server/notifications/notifications";
 import { Button } from "@/components/ui/button";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 
@@ -36,10 +37,20 @@ async function HeaderUser() {
     );
   }
 
+  // SUPER_ADMIN has no school (and so no inbox); skip the tenant-scoped lookup.
+  const unread = user.schoolId ? await countMyUnread() : 0;
+
   return (
     <>
-      <Button variant="ghost" size="icon" aria-label="Notifications">
-        <Bell />
+      <Button asChild variant="ghost" size="icon" className="relative" aria-label="Notifications">
+        <Link href="/notifications">
+          <Bell />
+          {unread > 0 ? (
+            <span className="bg-primary text-primary-foreground absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full text-[10px] leading-none font-medium">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          ) : null}
+        </Link>
       </Button>
       <div className="hidden text-right sm:block">
         <div className="text-sm leading-tight font-medium">{user.name}</div>

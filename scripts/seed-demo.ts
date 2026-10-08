@@ -74,7 +74,6 @@ async function main() {
       },
     }),
   ]);
-  void head;
 
   // --- Classes, sections, subject ----------------------------------------
   const grade1 = await prisma.class.create({ data: { schoolId: sid, name: "Grade 1", level: 1 } });
@@ -153,6 +152,37 @@ async function main() {
       });
     }
   }
+
+  // --- A few in-app notifications so the inbox isn't empty ---------------
+  // Written directly on the OWNER connection, like the rest of the seed. In
+  // the app, notifications are produced by the engine (dispatch/notifyUsers).
+  await prisma.notification.createMany({
+    data: [
+      {
+        schoolId: sid,
+        recipientId: head.id,
+        type: "GENERAL",
+        title: "Welcome to your dashboard",
+        body: "Your school is set up: classes, students and attendance are ready to go.",
+        readAt: new Date(),
+      },
+      {
+        schoolId: sid,
+        recipientId: teacher.id,
+        type: "GENERAL",
+        title: "You are assigned to Grade 1",
+        body: "You can mark attendance for Grade 1 from the Attendance page.",
+      },
+      {
+        schoolId: sid,
+        recipientId: parent.id,
+        type: "ATTENDANCE_ABSENT",
+        title: "Ayesha was marked absent",
+        body: "Ayesha Ahmed was marked absent earlier this week. Tap to review attendance.",
+        data: { studentId: g1[0].id },
+      },
+    ],
+  });
 
   await prisma.$disconnect();
 

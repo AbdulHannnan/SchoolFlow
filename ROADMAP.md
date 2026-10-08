@@ -32,7 +32,7 @@
 
 ## Module 4 - Notification Engine (backbone for everything after)
 
-- [ ] 4.1 Notification + Event abstraction (channel-agnostic), in-app channel
+- [x] 4.1 Notification + Event abstraction (channel-agnostic), in-app channel
 - [ ] 4.2 Email channel (Brevo) with templates
 - [ ] 4.3 WhatsApp channel (Cloud API/BSP), utility templates, event-triggered only
 - [ ] 4.4 Web Push (FCM)
