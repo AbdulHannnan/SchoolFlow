@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -85,7 +86,19 @@ async function StudentsContent() {
                       )}
                     </div>
                   </div>
-                  <DeleteButton action={deleteStudentAction} id={student.id} label={student.name} />
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href={`/attendance/${student.id}`}
+                      className="text-muted-foreground hover:text-foreground text-xs underline-offset-2 hover:underline"
+                    >
+                      Attendance
+                    </Link>
+                    <DeleteButton
+                      action={deleteStudentAction}
+                      id={student.id}
+                      label={student.name}
+                    />
+                  </div>
                 </li>
               ))}
             </ul>

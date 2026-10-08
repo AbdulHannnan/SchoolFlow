@@ -170,3 +170,120 @@ export async function saveClassAttendance(input: {
     return { saved };
   });
 }
+
+/* ---------------------------------------------------------------------------
+ * Read-only views (Module 3.3) - Head and Parent.
+ * ------------------------------------------------------------------------- */
+
+export type StatusCounts = Record<AttendanceStatus, number> & { total: number };
+
+function tally(records: { status: AttendanceStatus }[]): StatusCounts {
+  const counts: StatusCounts = { PRESENT: 0, ABSENT: 0, LATE: 0, LEAVE: 0, total: records.length };
+  for (const r of records) counts[r.status] += 1;
+  return counts;
+}
+
+/** Half-open UTC range [start, end) for a "YYYY-MM" month. */
+function monthRange(month: string): { start: Date; end: Date } {
+  const [y, m] = month.split("-").map(Number);
+  return { start: new Date(Date.UTC(y, m - 1, 1)), end: new Date(Date.UTC(y, m, 1)) };
+}
+
+/**
+ * Who may view one student's attendance: HEAD (any student in the school),
+ * PARENT (only a linked child), TEACHER (only a student in a class they're
+ * assigned to). Runs inside the tenant context, so lookups never cross schools.
+ */
+async function assertCanViewStudent(
+  tx: Prisma.TransactionClient,
+  user: Session["user"],
+  studentId: string,
+): Promise<void> {
+  if (user.role === "HEAD") return;
+  if (user.role === "PARENT") {
+    const link = await tx.parentStudent.findFirst({
+      where: { parentId: user.id, studentId },
+      select: { id: true },
+    });
+    if (!link) throw new Error("This student is not linked to your account");
+    return;
+  }
+  if (user.role === "TEACHER") {
+    const student = await tx.student.findFirst({
+      where: { id: studentId, class: { teacherAssignments: { some: { teacherId: user.id } } } },
+      select: { id: true },
+    });
+    if (!student) throw new Error("You are not assigned to this student's class");
+    return;
+  }
+  throw new Error("Not allowed to view attendance");
+}
+
+/** One student's attendance for a month, with per-status counts. */
+export async function getStudentAttendance(input: { studentId: string; month: string }) {
+  const { user, schoolId } = await requireSchool();
+  return withTenant(schoolId, async (tx) => {
+    const student = await tx.student.findUnique({
+      where: { id: input.studentId },
+      select: {
+        id: true,
+        name: true,
+        rollNumber: true,
+        class: { select: { name: true } },
+        section: { select: { name: true } },
+      },
+    });
+    if (!student) throw new Error("Student not found");
+    await assertCanViewStudent(tx, user, input.studentId);
+
+    const { start, end } = monthRange(input.month);
+    const records = await tx.attendance.findMany({
+      where: { studentId: input.studentId, date: { gte: start, lt: end } },
+      orderBy: { date: "desc" },
+      select: { id: true, date: true, status: true, note: true },
+    });
+
+    return { student, month: input.month, records, counts: tally(records) };
+  });
+}
+
+/** The signed-in parent's children, each with that month's records and counts. */
+export async function listChildrenAttendance(input: { month: string }) {
+  const { user, schoolId } = await requireSchool();
+  return withTenant(schoolId, async (tx) => {
+    const links = await tx.parentStudent.findMany({
+      where: { parentId: user.id },
+      orderBy: { createdAt: "asc" },
+      select: {
+        relation: true,
+        student: {
+          select: {
+            id: true,
+            name: true,
+            rollNumber: true,
+            class: { select: { name: true } },
+            section: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    const { start, end } = monthRange(input.month);
+    const children = [];
+    for (const link of links) {
+      const records = await tx.attendance.findMany({
+        where: { studentId: link.student.id, date: { gte: start, lt: end } },
+        orderBy: { date: "desc" },
+        select: { id: true, date: true, status: true, note: true },
+      });
+      children.push({
+        student: link.student,
+        relation: link.relation,
+        records,
+        counts: tally(records),
+      });
+    }
+
+    return { month: input.month, children };
+  });
+}
