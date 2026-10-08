@@ -4,7 +4,7 @@ A multi-tenant school management platform: attendance, homework/diary, fees,
 and a channel-agnostic notification engine (in-app, email, WhatsApp, web push),
 built for schools in Pakistan.
 
-> Status: **Module 2 complete - core school data (classes, subjects, teachers, students, parents).** Next: Module 3 - student attendance. See the roadmap.
+> Status: **Module 3 complete - student attendance (marking, Head/Parent views, reports with CSV export).** Next: Module 4 - notification engine. See the roadmap.
 
 ## Tech stack
 

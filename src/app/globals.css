@@ -115,3 +115,14 @@
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
+/* Printing (e.g. saving an attendance report as PDF): drop the app chrome and
+   any controls marked `.no-print`, and let the content use the full page. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+}

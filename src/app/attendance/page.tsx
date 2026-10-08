@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { AttendancePicker, type MarkableClass } from "@/components/academics/attendance-picker";
 import { MarkAttendanceForm } from "@/components/academics/mark-attendance-form";
 import { AttendanceSummary } from "@/components/academics/attendance-summary";
@@ -90,6 +91,11 @@ async function AttendanceContent({ searchParams }: { searchParams: SearchParams 
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <Button asChild variant="outline" size="sm">
+          <Link href="/attendance/report">View report</Link>
+        </Button>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Choose a class and date</CardTitle>

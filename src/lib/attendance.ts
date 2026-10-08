@@ -81,3 +81,46 @@ export function formatAttendanceDate(date: Date): string {
     timeZone: "UTC",
   });
 }
+
+/** A full day, e.g. "8 Oct 2026" (UTC). */
+export function formatDay(date: Date): string {
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+/** Today as "YYYY-MM-DD" (UTC). */
+export function todayISODate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Validate a "YYYY-MM-DD" string, falling back to today. */
+export function normalizeDate(date: string | undefined): string {
+  return date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : todayISODate();
+}
+
+/** Percentage present, or null when nothing was marked. */
+export function presentRate(present: number, total: number): number | null {
+  return total > 0 ? Math.round((present / total) * 100) : null;
+}
+
+export type RangePreset = "today" | "week" | "month";
+
+/** A from/to "YYYY-MM-DD" range for a preset, ending today (all UTC). */
+export function presetRange(preset: RangePreset): { from: string; to: string } {
+  const now = new Date();
+  const to = now.toISOString().slice(0, 10);
+  if (preset === "today") return { from: to, to };
+  if (preset === "month") {
+    const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    return { from: first.toISOString().slice(0, 10), to };
+  }
+  // week: back to Monday (UTC).
+  const day = now.getUTCDay(); // 0 = Sun
+  const offset = day === 0 ? 6 : day - 1;
+  const monday = new Date(now.getTime() - offset * 24 * 60 * 60 * 1000);
+  return { from: monday.toISOString().slice(0, 10), to };
+}

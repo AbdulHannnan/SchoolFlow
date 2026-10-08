@@ -287,3 +287,77 @@ export async function listChildrenAttendance(input: { month: string }) {
     return { month: input.month, children };
   });
 }
+
+export type ReportRow = {
+  student: {
+    id: string;
+    name: string;
+    rollNumber: string | null;
+    section: { name: string } | null;
+  };
+  counts: StatusCounts;
+};
+
+/**
+ * Per-student attendance totals for a class over an inclusive date range
+ * (Module 3.4). `from`/`to` are calendar days; `to` is counted in full. Rows
+ * are the class's current active students; records for students no longer in
+ * the class are ignored. HEAD may report any class, TEACHER only assigned ones.
+ */
+export async function getClassAttendanceReport(input: {
+  classId: string;
+  sectionId: string | null;
+  from: Date;
+  to: Date;
+}) {
+  const { user, schoolId } = await requireSchool();
+  const start = toDateOnly(input.from);
+  // Half-open end: the day after `to`, so `to` itself is included.
+  const end = new Date(toDateOnly(input.to).getTime() + 24 * 60 * 60 * 1000);
+  return withTenant(schoolId, async (tx) => {
+    const cls = await tx.class.findUnique({
+      where: { id: input.classId },
+      select: { id: true, name: true },
+    });
+    if (!cls) throw new Error("Class not found");
+    await assertCanMarkClass(tx, user, input.classId);
+
+    const students = await tx.student.findMany({
+      where: {
+        classId: input.classId,
+        ...(input.sectionId ? { sectionId: input.sectionId } : {}),
+        isActive: true,
+      },
+      orderBy: [{ rollNumber: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, rollNumber: true, section: { select: { name: true } } },
+    });
+
+    const records = await tx.attendance.findMany({
+      where: { classId: input.classId, date: { gte: start, lt: end } },
+      select: { studentId: true, status: true },
+    });
+
+    const byStudent = new Map<string, StatusCounts>(
+      students.map((s) => [s.id, { PRESENT: 0, ABSENT: 0, LATE: 0, LEAVE: 0, total: 0 }]),
+    );
+    for (const r of records) {
+      const c = byStudent.get(r.studentId);
+      if (c) {
+        c[r.status] += 1;
+        c.total += 1;
+      }
+    }
+
+    const rows: ReportRow[] = students.map((s) => ({ student: s, counts: byStudent.get(s.id)! }));
+    const totals: StatusCounts = { PRESENT: 0, ABSENT: 0, LATE: 0, LEAVE: 0, total: 0 };
+    for (const { counts } of rows) {
+      totals.PRESENT += counts.PRESENT;
+      totals.ABSENT += counts.ABSENT;
+      totals.LATE += counts.LATE;
+      totals.LEAVE += counts.LEAVE;
+      totals.total += counts.total;
+    }
+
+    return { class: cls, from: start, to: toDateOnly(input.to), rows, totals };
+  });
+}

@@ -13,7 +13,7 @@ import { SignOutButton } from "@/components/auth/sign-out-button";
  */
 export function Header({ title }: { title: string }) {
   return (
-    <header className="bg-background/80 sticky top-0 z-10 flex h-14 items-center gap-4 border-b px-4 backdrop-blur md:px-6">
+    <header className="bg-background/80 no-print sticky top-0 z-10 flex h-14 items-center gap-4 border-b px-4 backdrop-blur md:px-6">
       <h1 className="text-base font-semibold">{title}</h1>
 
       <div className="ml-auto flex items-center gap-2">

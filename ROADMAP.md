@@ -28,7 +28,7 @@
 - [x] 3.1 Attendance data model
 - [x] 3.2 Teacher UI: mark class attendance for a date
 - [x] 3.3 Attendance views for Head + Parent
-- [ ] 3.4 Daily/weekly/monthly reports + CSV/PDF export
+- [x] 3.4 Daily/weekly/monthly reports + CSV/PDF export
 
 ## Module 4 - Notification Engine (backbone for everything after)
 

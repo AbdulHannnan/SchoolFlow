@@ -15,7 +15,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden w-64 shrink-0 flex-col border-r md:flex">
+    <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border no-print hidden w-64 shrink-0 flex-col border-r md:flex">
       <div className="flex h-14 items-center gap-2 px-4">
         <GraduationCap className="size-6" />
         <span className="font-semibold">School</span>
