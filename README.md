@@ -4,7 +4,7 @@ A multi-tenant school management platform: attendance, homework/diary, fees,
 and a channel-agnostic notification engine (in-app, email, WhatsApp, web push),
 built for schools in Pakistan.
 
-> Status: **Module 4.1 complete - channel-agnostic notification engine with an in-app channel and inbox.** Next: Module 4.2 - email channel (Brevo). See the roadmap.
+> Status: **Module 4.2 complete - notification engine with in-app inbox and a Brevo email channel (per-event channel targeting).** Next: Module 4.3 - WhatsApp channel. See the roadmap.
 
 ## Tech stack
 

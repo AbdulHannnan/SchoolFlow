@@ -19,12 +19,18 @@ export type NotificationMessage = {
 };
 
 /**
- * A delivery channel. In-app is the only one in Module 4.1; email (4.2),
- * WhatsApp (4.3) and web push (4.4) implement this same interface and register
- * with the dispatcher without any caller changing.
+ * Known delivery channels. Grows as channels land: in-app (4.1), email (4.2);
+ * WhatsApp (4.3) and web push (4.4) add their names here when implemented.
+ */
+export type ChannelName = "in-app" | "email";
+
+/**
+ * A delivery channel. In-app and email exist today; WhatsApp (4.3) and web push
+ * (4.4) implement this same interface and register with the dispatcher without
+ * any caller changing.
  */
 export interface NotificationChannel {
-  readonly name: string;
+  readonly name: ChannelName;
   /** Deliver every message for one school. The dispatcher isolates failures,
    * so a throw here never stops the other channels from delivering. */
   deliver(schoolId: string, messages: NotificationMessage[]): Promise<void>;
