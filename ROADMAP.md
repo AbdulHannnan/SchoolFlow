@@ -35,7 +35,7 @@
 - [x] 4.1 Notification + Event abstraction (channel-agnostic), in-app channel
 - [x] 4.2 Email channel (Brevo) with templates
 - [x] 4.3 WhatsApp channel (Cloud API/BSP), utility templates, event-triggered only
-- [ ] 4.4 Web Push (FCM)
+- [x] 4.4 Web Push (FCM)
 - [ ] 4.5 Scheduler (node-cron) for batched/scheduled sends
 - [ ] 4.6 Wire attendance "absent" event -> WhatsApp alert to parent
 

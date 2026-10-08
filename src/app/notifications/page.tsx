@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { markAllReadAction, markReadAction } from "@/app/notifications/actions";
+import { EnablePushButton } from "@/components/notifications/enable-push-button";
 import { requireSchool } from "@/server/auth/dal";
 import { listMyNotifications } from "@/server/notifications/notifications";
 
@@ -32,9 +33,14 @@ async function NotificationsContent() {
 
   if (notifications.length === 0) {
     return (
-      <div className="text-muted-foreground flex flex-col items-center gap-3 py-16 text-center text-sm">
-        <BellOff className="size-8" />
-        <p>No notifications yet.</p>
+      <div className="space-y-6">
+        <div className="flex justify-end">
+          <EnablePushButton />
+        </div>
+        <div className="text-muted-foreground flex flex-col items-center gap-3 py-16 text-center text-sm">
+          <BellOff className="size-8" />
+          <p>No notifications yet.</p>
+        </div>
       </div>
     );
   }
@@ -45,13 +51,16 @@ async function NotificationsContent() {
         <p className="text-muted-foreground text-sm">
           {unread > 0 ? `${unread} unread` : "All caught up"}
         </p>
-        {unread > 0 ? (
-          <form action={markAllReadAction}>
-            <Button type="submit" variant="outline" size="sm">
-              Mark all read
-            </Button>
-          </form>
-        ) : null}
+        <div className="flex items-center gap-3">
+          <EnablePushButton />
+          {unread > 0 ? (
+            <form action={markAllReadAction}>
+              <Button type="submit" variant="outline" size="sm">
+                Mark all read
+              </Button>
+            </form>
+          ) : null}
+        </div>
       </div>
 
       <Card>

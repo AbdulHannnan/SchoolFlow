@@ -42,6 +42,7 @@ model School {
   parentStudents     ParentStudent[]
   attendance         Attendance[]
   notifications      Notification[]
+  pushSubscriptions  PushSubscription[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -87,6 +88,7 @@ model User {
   parentLinks        ParentStudent[]
   attendanceMarked   Attendance[]
   notifications      Notification[]
+  pushSubscriptions  PushSubscription[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -337,6 +339,29 @@ model Notification {
   // Serves the per-recipient inbox query and the unread-count badge.
   @@index([schoolId, recipientId, readAt, createdAt])
   @@map("notifications")
+}
+
+/// A Web Push (FCM) registration token for one user's browser/device (Module
+/// 4.4). One row per token; a user may have several (multiple devices). Tokens
+/// are opaque FCM registration tokens obtained client-side via the Firebase
+/// SDK. Tenant-scoped via RLS with a composite FK to the owning user. Dead
+/// tokens are pruned by the channel when FCM reports them unregistered.
+model PushSubscription {
+  id          String @id @default(cuid())
+  schoolId    String
+  school      School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User   @relation(fields: [schoolId, recipientId], references: [schoolId, id], onDelete: Cascade)
+  token       String
+  userAgent   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, token])
+  @@index([schoolId])
+  @@index([schoolId, recipientId])
+  @@map("push_subscriptions")
 }
 
 /// The kind of event a notification came from. Starts small and grows as the

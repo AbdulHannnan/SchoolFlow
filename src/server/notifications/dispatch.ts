@@ -2,6 +2,7 @@ import "server-only";
 
 import { emailChannel } from "@/server/notifications/channels/email";
 import { inAppChannel } from "@/server/notifications/channels/in-app";
+import { webPushChannel } from "@/server/notifications/channels/web-push";
 import { whatsappChannel } from "@/server/notifications/channels/whatsapp";
 import type {
   ChannelName,
@@ -36,7 +37,12 @@ export type AppEvent = {
 };
 
 /** Every implemented channel, keyed by name for per-event targeting. */
-const channels: NotificationChannel[] = [inAppChannel, emailChannel, whatsappChannel];
+const channels: NotificationChannel[] = [
+  inAppChannel,
+  emailChannel,
+  whatsappChannel,
+  webPushChannel,
+];
 
 /** Channels an event reaches when it doesn't name any. */
 const DEFAULT_CHANNELS: ChannelName[] = ["in-app"];
