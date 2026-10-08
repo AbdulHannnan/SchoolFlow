@@ -19,15 +19,15 @@ export type NotificationMessage = {
 };
 
 /**
- * Known delivery channels. Grows as channels land: in-app (4.1), email (4.2);
- * WhatsApp (4.3) and web push (4.4) add their names here when implemented.
+ * Known delivery channels. Grows as channels land: in-app (4.1), email (4.2),
+ * WhatsApp (4.3); web push (4.4) adds its name here when implemented.
  */
-export type ChannelName = "in-app" | "email";
+export type ChannelName = "in-app" | "email" | "whatsapp";
 
 /**
- * A delivery channel. In-app and email exist today; WhatsApp (4.3) and web push
- * (4.4) implement this same interface and register with the dispatcher without
- * any caller changing.
+ * A delivery channel. In-app, email and WhatsApp exist today; web push (4.4)
+ * implements this same interface and registers with the dispatcher without any
+ * caller changing.
  */
 export interface NotificationChannel {
   readonly name: ChannelName;
