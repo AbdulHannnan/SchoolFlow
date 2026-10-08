@@ -40,6 +40,7 @@ model School {
   teacherAssignments TeacherAssignment[]
   students           Student[]
   parentStudents     ParentStudent[]
+  attendance         Attendance[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -80,6 +81,7 @@ model User {
 
   teacherAssignments TeacherAssignment[]
   parentLinks        ParentStudent[]
+  attendanceMarked   Attendance[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -94,15 +96,16 @@ model User {
 /// ordering for display and for academic-year promotion later (Module 10.4).
 /// Tenant-scoped: RLS pins every row to one school (see the enable_rls_* migration).
 model Class {
-  id       String  @id @default(cuid())
+  id       String @id @default(cuid())
   schoolId String
-  school   School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   name     String
   level    Int?
 
   sections           Section[]
   teacherAssignments TeacherAssignment[]
   students           Student[]
+  attendance         Attendance[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -116,15 +119,16 @@ model Class {
 /// A section/division of a Class (e.g. "A", "B"). `schoolId` is denormalized
 /// from the parent Class so this table can carry its own RLS policy.
 model Section {
-  id       String  @id @default(cuid())
+  id       String @id @default(cuid())
   schoolId String
-  school   School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   classId  String
   // Composite FK: the parent class must belong to the same school.
-  class    Class   @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
+  class    Class  @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
   name     String
 
-  students Student[]
+  students   Student[]
+  attendance Attendance[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -155,6 +159,7 @@ model Student {
   isActive    Boolean   @default(true)
 
   parentLinks ParentStudent[]
+  attendance  Attendance[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -232,9 +237,9 @@ model Subject {
 /// class — "teaches Mathematics to Grade 1". Tenant-scoped via RLS; all three
 /// references plus `schoolId` live in the same school.
 model TeacherAssignment {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   schoolId  String
-  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school    School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   // Composite FKs: teacher, subject, and class must all be in the same school.
   teacherId String
   teacher   User    @relation(fields: [schoolId, teacherId], references: [schoolId, id], onDelete: Cascade)
@@ -250,4 +255,51 @@ model TeacherAssignment {
   @@index([schoolId])
   @@index([teacherId])
   @@map("teacher_assignments")
+}
+
+/// A daily attendance record: one row per student per calendar day (Module 3.1).
+/// `classId`/`sectionId` are captured at mark-time (not read live off the
+/// student) so historical reports stay correct after a promotion changes the
+/// student's class. `markedById` is the User (teacher/head) who recorded it;
+/// SetNull keeps the history if that account is later removed. Tenant-scoped via
+/// RLS with composite FKs so student, class, section, and marker share a school.
+model Attendance {
+  id         String           @id @default(cuid())
+  schoolId   String
+  school     School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    Student          @relation(fields: [schoolId, studentId], references: [schoolId, id], onDelete: Cascade)
+  classId    String
+  class      Class            @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
+  sectionId  String?
+  section    Section?         @relation(fields: [schoolId, sectionId], references: [schoolId, id], onDelete: NoAction)
+  date       DateTime         @db.Date
+  status     AttendanceStatus
+  note       String?
+  // Audit only: always the in-tenant session user, set server-side (never from
+  // client input), so a single-column FK is safe here — the composite form
+  // would force schoolId to NULL on SetNull and break the NOT NULL constraint.
+  markedById String?
+  markedBy   User?            @relation(fields: [markedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, date])
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([classId, date])
+  @@index([date])
+  @@map("attendance")
+}
+
+/// Daily attendance outcome. LEAVE is an approved/excused absence (distinct from
+/// an unexplained ABSENT, which drives the Module 4.6 parent alert).
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  LEAVE
+
+  @@map("attendance_status")
 }
