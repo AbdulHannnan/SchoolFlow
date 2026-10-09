@@ -45,6 +45,8 @@ model School {
   pushSubscriptions      PushSubscription[]
   scheduledNotifications ScheduledNotification[]
   diaryEntries           DiaryEntry[]
+  feeCategories          FeeCategory[]
+  feeStructures          FeeStructure[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -118,6 +120,7 @@ model Class {
   students           Student[]
   attendance         Attendance[]
   diaryEntries       DiaryEntry[]
+  feeStructures      FeeStructure[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -362,6 +365,65 @@ enum DiaryType {
   NOTE
 
   @@map("diary_type")
+}
+
+/// A bucket a fee belongs to (e.g. "Tuition", "Transport", "Exam",
+/// "Admission") (Module 6.1). Tenant-scoped via RLS; names are unique per
+/// school. `@@unique([schoolId, id])` lets fee structures reference it with a
+/// tenant-safe composite FK.
+model FeeCategory {
+  id       String @id @default(cuid())
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name     String
+
+  structures FeeStructure[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, name])
+  @@unique([schoolId, id])
+  @@index([schoolId])
+  @@map("fee_categories")
+}
+
+/// How often a fee recurs.
+enum FeeFrequency {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  ONE_TIME
+
+  @@map("fee_frequency")
+}
+
+/// A single fee definition: an `amount` in a category, optionally pinned to one
+/// class (null = applies to every class), billed at a `frequency` (Module 6.1).
+/// This is the template invoices are generated from in Module 6.2, so it also
+/// carries `@@unique([schoolId, id])` for a future composite FK. Category and
+/// class use composite FKs so all three stay in one school. Amount is money, so
+/// it's a fixed-scale Decimal, never a float. Tenant-scoped via RLS.
+model FeeStructure {
+  id         String       @id @default(cuid())
+  schoolId   String
+  school     School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   FeeCategory  @relation(fields: [schoolId, categoryId], references: [schoolId, id], onDelete: Cascade)
+  classId    String?
+  class      Class?       @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
+  label      String?
+  amount     Decimal      @db.Decimal(10, 2)
+  frequency  FeeFrequency @default(MONTHLY)
+  isActive   Boolean      @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, id])
+  @@index([schoolId])
+  @@index([classId])
+  @@map("fee_structures")
 }
 
 /// A delivered notification for one recipient (Module 4.1). This is the in-app

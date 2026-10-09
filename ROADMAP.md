@@ -47,7 +47,7 @@
 
 ## Module 6 - Fees <- MVP ENDS HERE (ship to first school)
 
-- [ ] 6.1 Fee structure (per class/category)
+- [x] 6.1 Fee structure (per class/category)
 - [ ] 6.2 Invoice generation + per-student ledger
 - [ ] 6.3 Manual payment recording + bank-transfer verification
 - [ ] 6.4 Fee reminder events (via notification engine)

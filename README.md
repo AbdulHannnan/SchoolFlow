@@ -4,7 +4,7 @@ A multi-tenant school management platform: attendance, homework/diary, fees,
 and a channel-agnostic notification engine (in-app, email, WhatsApp, web push),
 built for schools in Pakistan.
 
-> Status: **Module 5 complete - homework / daily diary: teachers post homework or notes per class/section, parents see a per-child feed, and each post fans a HOMEWORK_POSTED notification out to the targeted parents (on top of the complete Module 4 notification engine).** Next: Module 6 - fees (the MVP milestone). See the roadmap.
+> Status: **Module 6.1 complete - fee structure: a head defines fee categories and per-class (or all-class) fee items with amount and frequency. This is the fee catalogue invoices will be generated from.** Next: Module 6.2 - invoice generation + per-student ledger. See the roadmap.
 
 ## Tech stack
 
