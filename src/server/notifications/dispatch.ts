@@ -49,6 +49,19 @@ export type AppEvent =
       studentName: string;
       /** Human-readable date the absence was recorded for (e.g. "09 Oct 2026"). */
       date: string;
+    })
+  | (BaseEvent & {
+      /** A teacher posted homework or a diary note (Module 5.3). Recipients are
+       * the parents of the targeted class/section. Carries the entry's details
+       * so the in-app message and a deep link render without another lookup. */
+      type: "HOMEWORK_POSTED";
+      diaryId: string;
+      diaryType: "HOMEWORK" | "NOTE";
+      className: string;
+      subjectName: string | null;
+      entryTitle: string;
+      /** Human-readable due date (homework), or null. */
+      dueDate: string | null;
     });
 
 /** Every implemented channel, keyed by name for per-event targeting. */
@@ -83,6 +96,24 @@ function renderEvent(event: AppEvent): NotificationMessage[] {
         // is kept for an in-app deep link to the child's attendance.
         data: { studentId: event.studentId, studentName: event.studentName, date: event.date },
       }));
+    case "HOMEWORK_POSTED": {
+      const noun = event.diaryType === "HOMEWORK" ? "homework" : "note";
+      const detail = event.subjectName
+        ? `${event.subjectName}: ${event.entryTitle}`
+        : event.entryTitle;
+      return event.recipientIds.map((recipientId) => ({
+        recipientId,
+        type: "HOMEWORK_POSTED",
+        title: `New ${noun} for ${event.className}`,
+        body: event.dueDate ? `${detail} (due ${event.dueDate})` : detail,
+        data: {
+          diaryId: event.diaryId,
+          type: event.diaryType,
+          className: event.className,
+          subjectName: event.subjectName,
+        },
+      }));
+    }
   }
 }
 

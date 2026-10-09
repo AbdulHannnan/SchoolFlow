@@ -44,6 +44,7 @@ model School {
   notifications          Notification[]
   pushSubscriptions      PushSubscription[]
   scheduledNotifications ScheduledNotification[]
+  diaryEntries           DiaryEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -91,6 +92,7 @@ model User {
   notifications      Notification[]
   pushSubscriptions  PushSubscription[]
   scheduledNotifications ScheduledNotification[]
+  diaryEntries       DiaryEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -115,6 +117,7 @@ model Class {
   teacherAssignments TeacherAssignment[]
   students           Student[]
   attendance         Attendance[]
+  diaryEntries       DiaryEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -136,8 +139,9 @@ model Section {
   class    Class  @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
   name     String
 
-  students   Student[]
-  attendance Attendance[]
+  students     Student[]
+  attendance   Attendance[]
+  diaryEntries DiaryEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -232,6 +236,7 @@ model Subject {
   code     String?
 
   teacherAssignments TeacherAssignment[]
+  diaryEntries       DiaryEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -311,6 +316,52 @@ enum AttendanceStatus {
   LEAVE
 
   @@map("attendance_status")
+}
+
+/// A homework assignment or daily-diary note a teacher posts for a class
+/// (Module 5). One entry targets a class and, optionally, a single section
+/// (null = the whole class) and a subject (null for a general NOTE). `date` is
+/// the day it's posted for; `dueDate` is optional (homework). Class/section/
+/// subject use composite FKs so all stay in one school; `createdById` is a
+/// single-column FK (SetNull) to the posting teacher/head — audit only, so the
+/// entry survives if that account is later removed (the composite SetNull form
+/// would force schoolId NULL, as with Attendance.markedBy). Tenant-scoped via
+/// RLS. Posting an entry fans a HOMEWORK_POSTED notification out to the parents
+/// of the targeted students (Module 5.3).
+model DiaryEntry {
+  id          String    @id @default(cuid())
+  schoolId    String
+  school      School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId     String
+  class       Class     @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
+  sectionId   String?
+  section     Section?  @relation(fields: [schoolId, sectionId], references: [schoolId, id], onDelete: NoAction)
+  subjectId   String?
+  subject     Subject?  @relation(fields: [schoolId, subjectId], references: [schoolId, id], onDelete: NoAction)
+  type        DiaryType @default(HOMEWORK)
+  date        DateTime  @db.Date
+  title       String
+  content     String
+  dueDate     DateTime? @db.Date
+  createdById String?
+  createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId])
+  @@index([classId, date])
+  @@index([schoolId, date])
+  @@map("diary_entries")
+}
+
+/// What a diary entry is: HOMEWORK (usually with a subject and maybe a due
+/// date) or a general NOTE/announcement for the class.
+enum DiaryType {
+  HOMEWORK
+  NOTE
+
+  @@map("diary_type")
 }
 
 /// A delivered notification for one recipient (Module 4.1). This is the in-app
@@ -411,6 +462,7 @@ model ScheduledNotification {
 enum NotificationType {
   GENERAL
   ATTENDANCE_ABSENT
+  HOMEWORK_POSTED
 
   @@map("notification_type")
 }

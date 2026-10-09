@@ -41,9 +41,9 @@
 
 ## Module 5 - Homework / Daily Diary
 
-- [ ] 5.1 Diary model
-- [ ] 5.2 Teacher posts homework per class
-- [ ] 5.3 Student/Parent views + notification hook
+- [x] 5.1 Diary model
+- [x] 5.2 Teacher posts homework per class
+- [x] 5.3 Student/Parent views + notification hook
 
 ## Module 6 - Fees <- MVP ENDS HERE (ship to first school)
 
