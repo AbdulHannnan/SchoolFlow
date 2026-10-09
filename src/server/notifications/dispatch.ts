@@ -62,25 +62,39 @@ function renderEvent(event: AppEvent): NotificationMessage[] {
 }
 
 /**
- * Dispatch an event to every enabled channel. Channels are isolated with
+ * Deliver already-rendered messages to every targeted channel for one school.
+ * This is the shared core beneath `dispatch`: callers that already hold
+ * channel-agnostic messages — e.g. the scheduler draining the scheduled-send
+ * queue (Module 4.5), where each queued row carries its own type — deliver
+ * through here without going via the event union. Channels are isolated with
  * `allSettled`: one channel failing (say, an email provider is down) never
  * blocks the others, so the in-app notification still lands.
  */
-export async function dispatch(event: AppEvent): Promise<void> {
-  const messages = renderEvent(event);
+export async function deliverMessages(
+  schoolId: string,
+  messages: NotificationMessage[],
+  targets: ChannelName[] = DEFAULT_CHANNELS,
+): Promise<void> {
   if (messages.length === 0) return;
 
-  const targets = event.channels ?? DEFAULT_CHANNELS;
   const active = channels.filter((channel) => targets.includes(channel.name));
 
   const results = await Promise.allSettled(
-    active.map((channel) => channel.deliver(event.schoolId, messages)),
+    active.map((channel) => channel.deliver(schoolId, messages)),
   );
   results.forEach((result, i) => {
     if (result.status === "rejected") {
       console.error(`[notifications] channel "${active[i].name}" failed`, result.reason);
     }
   });
+}
+
+/**
+ * Dispatch an event to every enabled channel. Expands the event into one
+ * message per recipient, then hands them to `deliverMessages`.
+ */
+export async function dispatch(event: AppEvent): Promise<void> {
+  await deliverMessages(event.schoolId, renderEvent(event), event.channels ?? DEFAULT_CHANNELS);
 }
 
 /** Convenience wrapper: send an ad-hoc message to one or more users. Defaults

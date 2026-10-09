@@ -4,7 +4,7 @@ A multi-tenant school management platform: attendance, homework/diary, fees,
 and a channel-agnostic notification engine (in-app, email, WhatsApp, web push),
 built for schools in Pakistan.
 
-> Status: **Module 4.4 complete - notification engine with four channels: in-app, Brevo email, WhatsApp Cloud API, and Web Push (FCM).** Next: Module 4.5 - scheduler (node-cron) for batched/scheduled sends. See the roadmap.
+> Status: **Module 4.5 complete - node-cron scheduler draining a scheduled-notification outbox for batched/scheduled sends, on top of the four-channel notification engine (in-app, Brevo email, WhatsApp Cloud API, Web Push/FCM).** Next: Module 4.6 - wire the attendance "absent" event to a WhatsApp alert for parents. See the roadmap.
 
 ## Tech stack
 

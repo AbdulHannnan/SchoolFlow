@@ -40,9 +40,10 @@ model School {
   teacherAssignments TeacherAssignment[]
   students           Student[]
   parentStudents     ParentStudent[]
-  attendance         Attendance[]
-  notifications      Notification[]
-  pushSubscriptions  PushSubscription[]
+  attendance             Attendance[]
+  notifications          Notification[]
+  pushSubscriptions      PushSubscription[]
+  scheduledNotifications ScheduledNotification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -89,6 +90,7 @@ model User {
   attendanceMarked   Attendance[]
   notifications      Notification[]
   pushSubscriptions  PushSubscription[]
+  scheduledNotifications ScheduledNotification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -362,6 +364,45 @@ model PushSubscription {
   @@index([schoolId])
   @@index([schoolId, recipientId])
   @@map("push_subscriptions")
+}
+
+/// A notification queued for later delivery (Module 4.5). Instead of sending
+/// inline, a caller enqueues a row with a `sendAt`; the scheduler's per-minute
+/// cron flush (`src/server/scheduler`) picks up every row whose `sendAt` has
+/// passed and dispatches it through the notification engine, then stamps
+/// `sentAt`. This is the backbone for scheduled and batched sends — fee
+/// reminders (Module 6.4), attendance digests, etc. enqueue here rather than
+/// blocking a request on delivery. `channels` names the delivery channels (the
+/// `ChannelName` union, stored as text); `attempts`/`lastError` give the flush
+/// a simple retry trail. Tenant-scoped via RLS; the recipient is pinned to the
+/// same school by a composite FK.
+model ScheduledNotification {
+  id          String           @id @default(cuid())
+  schoolId    String
+  school      School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User             @relation(fields: [schoolId, recipientId], references: [schoolId, id], onDelete: Cascade)
+  type        NotificationType @default(GENERAL)
+  title       String
+  body        String
+  data        Json?
+  channels    String[]
+  /// When the notification becomes due. The flush delivers rows with
+  /// `sendAt <= now()` and `sentAt IS NULL`.
+  sendAt      DateTime
+  /// Set once delivery has been dispatched; a non-null value means "done" and
+  /// the flush skips it thereafter.
+  sentAt      DateTime?
+  attempts    Int              @default(0)
+  lastError   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId])
+  // Serves the flush query: unsent rows ordered by when they came due.
+  @@index([sentAt, sendAt])
+  @@map("scheduled_notifications")
 }
 
 /// The kind of event a notification came from. Starts small and grows as the
