@@ -511,6 +511,7 @@ enum PaymentMethod {
   CASH
   BANK_TRANSFER
   CARD
+  JAZZCASH
   OTHER
 
   @@map("payment_method")

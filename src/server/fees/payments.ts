@@ -3,6 +3,7 @@ import "server-only";
 import type { PaymentMethod, Prisma } from "@prisma/client";
 
 import { requireSchool } from "@/server/auth/dal";
+import { prisma } from "@/server/db";
 import { withTenant } from "@/server/db/tenant";
 
 /**
@@ -115,6 +116,50 @@ export async function submitBankTransfer(input: {
       },
     });
   });
+}
+
+/**
+ * Apply a payment that a payment gateway has confirmed (Module 6.5+). Runs in a
+ * callback with no session, so it resolves the tenant from the invoice via the
+ * owner client (which bypasses RLS, like other system operations) and then
+ * applies within that tenant. Idempotent on `reference` (the gateway txn id),
+ * so a repeated callback never double-credits. Returns the student the invoice
+ * belongs to (for a redirect), or null if the invoice no longer exists.
+ */
+export async function applyGatewayPayment(input: {
+  invoiceId: string;
+  amount: string;
+  method: PaymentMethod;
+  reference: string;
+}): Promise<{ studentId: string } | null> {
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: input.invoiceId },
+    select: { schoolId: true, studentId: true },
+  });
+  if (!invoice) return null;
+  const { schoolId, studentId } = invoice;
+
+  await withTenant(schoolId, async (tx) => {
+    const existing = await tx.payment.findFirst({
+      where: { invoiceId: input.invoiceId, reference: input.reference, status: "VERIFIED" },
+      select: { id: true },
+    });
+    if (existing) return;
+    await tx.payment.create({
+      data: {
+        schoolId,
+        invoiceId: input.invoiceId,
+        amount: input.amount,
+        method: input.method,
+        reference: input.reference,
+        status: "VERIFIED",
+        verifiedAt: new Date(),
+      },
+    });
+    await recomputeInvoice(tx, input.invoiceId);
+  });
+
+  return { studentId };
 }
 
 /** Verify a pending payment and apply it to its invoice (HEAD). */

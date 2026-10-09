@@ -51,7 +51,7 @@
 - [x] 6.2 Invoice generation + per-student ledger
 - [x] 6.3 Manual payment recording + bank-transfer verification
 - [x] 6.4 Fee reminder events (via notification engine)
-- [ ] 6.5 JazzCash integration
+- [x] 6.5 JazzCash integration
 - [ ] 6.6 Easypaisa integration
 
 ## Module 7 - Progress, Exams & Red Flags (Phase 2)

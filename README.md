@@ -4,7 +4,7 @@ A multi-tenant school management platform: attendance, homework/diary, fees,
 and a channel-agnostic notification engine (in-app, email, WhatsApp, web push),
 built for schools in Pakistan.
 
-> Status: **Module 6.4 complete - fee reminders: a head notifies parents of students with outstanding balances (aggregated per student) through the notification engine, in-app and WhatsApp. Only payment gateways (6.5/6.6) remain before the MVP ships.** Next: Module 6.5 - JazzCash integration. See the roadmap.
+> Status: **Module 6.5 complete - JazzCash online payments: parents pay an invoice via JazzCash Hosted Checkout (signed request, signed return verified, payment recorded automatically). One gateway (Easypaisa, 6.6) remains before the MVP ships.** Next: Module 6.6 - Easypaisa integration. See the roadmap.
 
 ## Tech stack
 
