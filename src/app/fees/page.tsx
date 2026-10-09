@@ -1,16 +1,20 @@
 import { Suspense } from "react";
+import Link from "next/link";
+import { forbidden } from "next/navigation";
 import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateFeeCategoryForm } from "@/components/fees/create-fee-category-form";
 import { CreateFeeStructureForm } from "@/components/fees/create-fee-structure-form";
 import { DeleteButton } from "@/components/academics/delete-button";
 import { deleteFeeCategoryAction, deleteFeeStructureAction } from "@/app/fees/actions";
-import { requireRole } from "@/server/auth/dal";
+import { verifySession } from "@/server/auth/dal";
 import { listClassesWithSections } from "@/server/academics/classes";
 import { listFeeCategories, listFeeStructures } from "@/server/fees/structure";
+import { listChildrenLedgerSummaries } from "@/server/fees/invoices";
 import { FEE_FREQUENCY_LABELS, formatPKR } from "@/lib/money";
 
 export const metadata: Metadata = {
@@ -19,7 +23,7 @@ export const metadata: Metadata = {
 
 export default function FeesPage() {
   return (
-    <AppShell title="Fee Structure">
+    <AppShell title="Fees">
       <Suspense fallback={<div className="bg-muted h-64 animate-pulse rounded-xl" />}>
         <FeesContent />
       </Suspense>
@@ -28,7 +32,13 @@ export default function FeesPage() {
 }
 
 async function FeesContent() {
-  await requireRole("HEAD");
+  const user = await verifySession();
+  if (user.role === "PARENT") return <ParentFees />;
+  if (user.role !== "HEAD") forbidden();
+  return <FeeStructureAdmin />;
+}
+
+async function FeeStructureAdmin() {
   const [categories, classes, structures] = await Promise.all([
     listFeeCategories(),
     listClassesWithSections(),
@@ -38,6 +48,12 @@ async function FeesContent() {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <Button asChild variant="outline" size="sm">
+          <Link href="/fees/invoices">Invoices</Link>
+        </Button>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Fee categories</CardTitle>
@@ -113,6 +129,52 @@ async function FeesContent() {
           </CardContent>
         </Card>
       ) : null}
+    </div>
+  );
+}
+
+async function ParentFees() {
+  const children = await listChildrenLedgerSummaries();
+
+  if (children.length === 0) {
+    return (
+      <p className="text-muted-foreground text-sm">
+        No children are linked to your account yet. Please contact the school.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {children.map((c) => (
+        <Card key={c.student.id}>
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-base">
+                <Link href={`/fees/students/${c.student.id}`} className="hover:underline">
+                  {c.student.name}
+                </Link>
+                <span className="text-muted-foreground ml-2 text-sm font-normal">
+                  {c.student.className}
+                  {c.student.sectionName ? ` - ${c.student.sectionName}` : ""}
+                </span>
+              </CardTitle>
+              <span className="text-sm font-medium">
+                Balance{" "}
+                <span className={Number(c.balance) > 0 ? "text-destructive" : ""}>
+                  {formatPKR(c.balance)}
+                </span>
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground text-sm">
+              {c.invoiceCount} {c.invoiceCount === 1 ? "invoice" : "invoices"} · billed{" "}
+              {formatPKR(c.billed)} · paid {formatPKR(c.paid)}
+            </p>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }

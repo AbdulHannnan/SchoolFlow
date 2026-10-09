@@ -47,6 +47,8 @@ model School {
   diaryEntries           DiaryEntry[]
   feeCategories          FeeCategory[]
   feeStructures          FeeStructure[]
+  invoices               Invoice[]
+  invoiceLineItems       InvoiceLineItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -121,6 +123,7 @@ model Class {
   attendance         Attendance[]
   diaryEntries       DiaryEntry[]
   feeStructures      FeeStructure[]
+  invoices           Invoice[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -176,6 +179,7 @@ model Student {
 
   parentLinks ParentStudent[]
   attendance  Attendance[]
+  invoices    Invoice[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -417,6 +421,8 @@ model FeeStructure {
   frequency  FeeFrequency @default(MONTHLY)
   isActive   Boolean      @default(true)
 
+  lineItems InvoiceLineItem[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -424,6 +430,77 @@ model FeeStructure {
   @@index([schoolId])
   @@index([classId])
   @@map("fee_structures")
+}
+
+/// How an invoice stands relative to what's been paid (Module 6.2). Set to
+/// UNPAID at generation; payments (Module 6.3) move it to PARTIAL/PAID.
+enum InvoiceStatus {
+  UNPAID
+  PARTIAL
+  PAID
+  CANCELLED
+
+  @@map("invoice_status")
+}
+
+/// A bill issued to one student for a billing period (Module 6.2). Generated
+/// from the fee structure: one `InvoiceLineItem` per applicable fee, with
+/// `total` the sum. `period` is the billing month ("YYYY-MM"); the
+/// `@@unique([studentId, period])` key makes generation idempotent (re-running
+/// a month never double-bills). `classId` is captured at generation so reports
+/// stay correct after a promotion. `paidAmount` starts at 0 and is maintained
+/// by payments in Module 6.3; balance is `total - paidAmount`. Tenant-scoped
+/// via RLS with composite FKs; `@@unique([schoolId, id])` lets payments
+/// reference it tenant-safely.
+model Invoice {
+  id         String        @id @default(cuid())
+  schoolId   String
+  school     School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    Student       @relation(fields: [schoolId, studentId], references: [schoolId, id], onDelete: Cascade)
+  classId    String?
+  class      Class?        @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: NoAction)
+  period     String
+  title      String
+  dueDate    DateTime?     @db.Date
+  status     InvoiceStatus @default(UNPAID)
+  total      Decimal       @db.Decimal(10, 2)
+  paidAmount Decimal       @default(0) @db.Decimal(10, 2)
+
+  lineItems InvoiceLineItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, period])
+  @@unique([schoolId, id])
+  @@index([schoolId])
+  @@index([schoolId, status])
+  @@index([classId, period])
+  @@map("invoices")
+}
+
+/// One charge on an invoice (Module 6.2), usually copied from a FeeStructure at
+/// generation. `description`/`amount` are snapshotted so the invoice is stable
+/// even if the fee definition later changes; `feeStructureId` keeps the link
+/// for reference (NoAction, so history isn't lost). Tenant-scoped via RLS.
+model InvoiceLineItem {
+  id             String        @id @default(cuid())
+  schoolId       String
+  school         School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  invoiceId      String
+  invoice        Invoice       @relation(fields: [schoolId, invoiceId], references: [schoolId, id], onDelete: Cascade)
+  feeStructureId String?
+  feeStructure   FeeStructure? @relation(fields: [schoolId, feeStructureId], references: [schoolId, id], onDelete: NoAction)
+  description    String
+  amount         Decimal       @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId])
+  @@index([invoiceId])
+  @@map("invoice_line_items")
 }
 
 /// A delivered notification for one recipient (Module 4.1). This is the in-app

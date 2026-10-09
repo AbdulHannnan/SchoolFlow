@@ -21,3 +21,10 @@ export const FEE_FREQUENCY_LABELS: Record<string, string> = {
   ANNUAL: "Annual",
   ONE_TIME: "One-time",
 };
+
+export const INVOICE_STATUS_LABELS: Record<string, string> = {
+  UNPAID: "Unpaid",
+  PARTIAL: "Partial",
+  PAID: "Paid",
+  CANCELLED: "Cancelled",
+};

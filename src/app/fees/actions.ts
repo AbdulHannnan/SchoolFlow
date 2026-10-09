@@ -11,6 +11,7 @@ import {
   deleteFeeCategory,
   deleteFeeStructure,
 } from "@/server/fees/structure";
+import { generateInvoices } from "@/server/fees/invoices";
 import type { FormState } from "@/app/fees/form-state";
 
 function fieldErrors(error: z.ZodError): Record<string, string> {
@@ -125,5 +126,56 @@ export async function deleteFeeStructureAction(formData: FormData): Promise<void
   if (id) {
     await deleteFeeStructure(id);
     refresh();
+  }
+}
+
+const generateSchema = z.object({
+  classId: z.string().min(1, "Pick a class"),
+  sectionId: z
+    .string()
+    .trim()
+    .transform((v) => (v === "" ? null : v)),
+  period: z.string().regex(/^\d{4}-\d{2}$/, "Pick a month"),
+  dueDate: z.coerce.date().nullable(),
+});
+
+export async function generateInvoicesAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  await requireRole("HEAD");
+
+  const rawDue = String(formData.get("dueDate") ?? "").trim();
+  const parsed = generateSchema.safeParse({
+    classId: formData.get("classId"),
+    sectionId: formData.get("sectionId") ?? "",
+    period: formData.get("period"),
+    dueDate: rawDue === "" ? null : rawDue,
+  });
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Please fix the errors.",
+      fieldErrors: fieldErrors(parsed.error),
+    };
+  }
+
+  try {
+    const { created, skipped, feeCount } = await generateInvoices(parsed.data);
+    refresh();
+    if (feeCount === 0) {
+      return {
+        status: "error",
+        message: "No active monthly fees apply to this class. Add a fee first.",
+      };
+    }
+    const parts = [`${created} created`];
+    if (skipped > 0) parts.push(`${skipped} already existed`);
+    return { status: "success", message: `Invoices: ${parts.join(", ")}.` };
+  } catch (error) {
+    if (error instanceof Error) {
+      return { status: "error", message: error.message };
+    }
+    throw error;
   }
 }
