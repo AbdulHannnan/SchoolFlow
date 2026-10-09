@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { InvoiceStatus, Prisma } from "@prisma/client";
+import type { InvoiceStatus, PaymentMethod, PaymentStatus, Prisma } from "@prisma/client";
 import type { Session } from "next-auth";
 
 import { requireSchool } from "@/server/auth/dal";
@@ -204,8 +204,17 @@ async function assertCanViewStudent(
 }
 
 export type LedgerLine = { id: string; description: string; amount: string };
+export type LedgerPayment = {
+  id: string;
+  amount: string;
+  method: PaymentMethod;
+  status: PaymentStatus;
+  reference: string | null;
+  createdAt: Date;
+};
 export type LedgerInvoice = Omit<InvoiceRow, "studentName" | "rollNumber"> & {
   lineItems: LedgerLine[];
+  payments: LedgerPayment[];
 };
 
 /**
@@ -247,6 +256,17 @@ export async function getStudentLedger(studentId: string) {
           orderBy: { createdAt: "asc" },
           select: { id: true, description: true, amount: true },
         },
+        payments: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            amount: true,
+            method: true,
+            status: true,
+            reference: true,
+            createdAt: true,
+          },
+        },
       },
     });
 
@@ -267,6 +287,14 @@ export async function getStudentLedger(studentId: string) {
           id: l.id,
           description: l.description,
           amount: l.amount.toString(),
+        })),
+        payments: i.payments.map((p) => ({
+          id: p.id,
+          amount: p.amount.toString(),
+          method: p.method,
+          status: p.status,
+          reference: p.reference,
+          createdAt: p.createdAt,
         })),
       };
     });

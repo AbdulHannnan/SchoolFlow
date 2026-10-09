@@ -4,7 +4,7 @@ A multi-tenant school management platform: attendance, homework/diary, fees,
 and a channel-agnostic notification engine (in-app, email, WhatsApp, web push),
 built for schools in Pakistan.
 
-> Status: **Module 6.2 complete - invoice generation + per-student ledger: a head generates a month's invoices for a class from the monthly fee structure (idempotent per student/month), views a filterable invoice list and each student's ledger; parents see their children's balances and ledgers.** Next: Module 6.3 - manual payment recording + bank-transfer verification. See the roadmap.
+> Status: **Module 6.3 complete - payments: a head records manual payments (applied immediately) and verifies/rejects parent-submitted bank-transfer claims; each applied payment recomputes the invoice's paid amount and status. Ledgers now show live balances.** Next: Module 6.4 - fee reminder events (via the notification engine). See the roadmap.
 
 ## Tech stack
 

@@ -12,7 +12,19 @@ import {
   deleteFeeStructure,
 } from "@/server/fees/structure";
 import { generateInvoices } from "@/server/fees/invoices";
+import {
+  recordPayment,
+  rejectPayment,
+  submitBankTransfer,
+  verifyPayment,
+} from "@/server/fees/payments";
 import type { FormState } from "@/app/fees/form-state";
+
+const amountField = z
+  .string()
+  .trim()
+  .regex(/^\d+(\.\d{1,2})?$/, "Enter a valid amount (e.g. 1500 or 1500.50)")
+  .refine((v) => Number(v) > 0, "Amount must be greater than zero");
 
 function fieldErrors(error: z.ZodError): Record<string, string> {
   const out: Record<string, string> = {};
@@ -177,5 +189,111 @@ export async function generateInvoicesAction(
       return { status: "error", message: error.message };
     }
     throw error;
+  }
+}
+
+const recordPaymentSchema = z.object({
+  invoiceId: z.string().min(1),
+  amount: amountField,
+  method: z.enum(["CASH", "BANK_TRANSFER", "CARD", "OTHER"]),
+  reference: z
+    .string()
+    .trim()
+    .max(120)
+    .transform((v) => (v === "" ? null : v)),
+  note: z
+    .string()
+    .trim()
+    .max(200)
+    .transform((v) => (v === "" ? null : v)),
+});
+
+export async function recordPaymentAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  await requireRole("HEAD");
+
+  const parsed = recordPaymentSchema.safeParse({
+    invoiceId: formData.get("invoiceId"),
+    amount: formData.get("amount") ?? "",
+    method: formData.get("method"),
+    reference: formData.get("reference") ?? "",
+    note: formData.get("note") ?? "",
+  });
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Please fix the errors.",
+      fieldErrors: fieldErrors(parsed.error),
+    };
+  }
+
+  try {
+    await recordPayment(parsed.data);
+    refresh();
+    return { status: "success", message: "Payment recorded." };
+  } catch (error) {
+    if (error instanceof Error) return { status: "error", message: error.message };
+    throw error;
+  }
+}
+
+const bankTransferSchema = z.object({
+  invoiceId: z.string().min(1),
+  amount: amountField,
+  reference: z.string().trim().min(1, "Enter the transfer reference").max(120),
+  note: z
+    .string()
+    .trim()
+    .max(200)
+    .transform((v) => (v === "" ? null : v)),
+});
+
+export async function submitBankTransferAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  await requireRole("PARENT");
+
+  const parsed = bankTransferSchema.safeParse({
+    invoiceId: formData.get("invoiceId"),
+    amount: formData.get("amount") ?? "",
+    reference: formData.get("reference") ?? "",
+    note: formData.get("note") ?? "",
+  });
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Please fix the errors.",
+      fieldErrors: fieldErrors(parsed.error),
+    };
+  }
+
+  try {
+    await submitBankTransfer(parsed.data);
+    refresh();
+    return { status: "success", message: "Submitted. The school will verify it." };
+  } catch (error) {
+    if (error instanceof Error) return { status: "error", message: error.message };
+    throw error;
+  }
+}
+
+export async function verifyPaymentAction(formData: FormData): Promise<void> {
+  await requireRole("HEAD");
+  const id = String(formData.get("id") ?? "");
+  if (id) {
+    await verifyPayment(id);
+    refresh();
+  }
+}
+
+export async function rejectPaymentAction(formData: FormData): Promise<void> {
+  await requireRole("HEAD");
+  const id = String(formData.get("id") ?? "");
+  if (id) {
+    await rejectPayment(id);
+    refresh();
   }
 }

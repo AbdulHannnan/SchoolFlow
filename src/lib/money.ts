@@ -28,3 +28,16 @@ export const INVOICE_STATUS_LABELS: Record<string, string> = {
   PAID: "Paid",
   CANCELLED: "Cancelled",
 };
+
+export const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  CASH: "Cash",
+  BANK_TRANSFER: "Bank transfer",
+  CARD: "Card",
+  OTHER: "Other",
+};
+
+export const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Pending",
+  VERIFIED: "Verified",
+  REJECTED: "Rejected",
+};

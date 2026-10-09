@@ -49,6 +49,7 @@ model School {
   feeStructures          FeeStructure[]
   invoices               Invoice[]
   invoiceLineItems       InvoiceLineItem[]
+  payments               Payment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -97,6 +98,7 @@ model User {
   pushSubscriptions  PushSubscription[]
   scheduledNotifications ScheduledNotification[]
   diaryEntries       DiaryEntry[]
+  paymentsRecorded   Payment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -468,6 +470,7 @@ model Invoice {
   paidAmount Decimal       @default(0) @db.Decimal(10, 2)
 
   lineItems InvoiceLineItem[]
+  payments  Payment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -501,6 +504,60 @@ model InvoiceLineItem {
   @@index([schoolId])
   @@index([invoiceId])
   @@map("invoice_line_items")
+}
+
+/// How a payment was made (Module 6.3).
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CARD
+  OTHER
+
+  @@map("payment_method")
+}
+
+/// A payment's verification state (Module 6.3). A HEAD's manual entry is
+/// VERIFIED immediately; a parent-submitted bank transfer starts PENDING and a
+/// HEAD moves it to VERIFIED (applied to the invoice) or REJECTED. Only
+/// VERIFIED payments count toward an invoice's `paidAmount`.
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+
+  @@map("payment_status")
+}
+
+/// A payment recorded against an invoice (Module 6.3). Office/HEAD records
+/// manual payments (cash, cheque, verified bank transfer) which apply at once;
+/// a parent can submit a bank-transfer claim (amount + bank `reference`) that
+/// stays PENDING until a HEAD verifies it. Applying a payment recomputes the
+/// invoice's `paidAmount`/`status` from the sum of its VERIFIED payments.
+/// `recordedById` is the actor who entered it (HEAD or the submitting parent) —
+/// a single-column SetNull FK (audit only), so the payment survives if that
+/// account is removed. Tenant-scoped via RLS; invoice via a composite FK.
+model Payment {
+  id           String        @id @default(cuid())
+  schoolId     String
+  school       School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  invoiceId    String
+  invoice      Invoice       @relation(fields: [schoolId, invoiceId], references: [schoolId, id], onDelete: Cascade)
+  amount       Decimal       @db.Decimal(10, 2)
+  method       PaymentMethod @default(CASH)
+  reference    String?
+  status       PaymentStatus @default(VERIFIED)
+  note         String?
+  recordedById String?
+  recordedBy   User?         @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+  verifiedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId])
+  @@index([schoolId, status])
+  @@index([invoiceId])
+  @@map("payments")
 }
 
 /// A delivered notification for one recipient (Module 4.1). This is the in-app

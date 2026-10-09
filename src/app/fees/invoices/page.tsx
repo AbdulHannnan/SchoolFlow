@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GenerateInvoicesForm, type InvoiceClass } from "@/components/fees/generate-invoices-form";
 import { InvoiceStatusBadge } from "@/components/fees/invoice-status-badge";
+import { rejectPaymentAction, verifyPaymentAction } from "@/app/fees/actions";
 import { requireRole } from "@/server/auth/dal";
 import { listClassesWithSections } from "@/server/academics/classes";
 import { listInvoices } from "@/server/fees/invoices";
+import { listPendingPayments } from "@/server/fees/payments";
 import { currentMonth, formatDay } from "@/lib/attendance";
 import { formatPKR } from "@/lib/money";
 
@@ -37,7 +39,10 @@ async function InvoicesContent({ searchParams }: { searchParams: SearchParams })
   const classId = classes.some((c) => c.id === sp.classId) ? sp.classId! : null;
   const period = sp.period && /^\d{4}-\d{2}$/.test(sp.period) ? sp.period : null;
 
-  const invoices = await listInvoices({ classId, period });
+  const [invoices, pending] = await Promise.all([
+    listInvoices({ classId, period }),
+    listPendingPayments(),
+  ]);
   const classOptions: InvoiceClass[] = classes.map((c) => ({
     id: c.id,
     name: c.name,
@@ -64,6 +69,51 @@ async function InvoicesContent({ searchParams }: { searchParams: SearchParams })
           )}
         </CardContent>
       </Card>
+
+      {pending.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              {pending.length} payment{pending.length === 1 ? "" : "s"} awaiting verification
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-border divide-y">
+              {pending.map((p) => (
+                <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-sm font-medium">
+                      <Link href={`/fees/students/${p.studentId}`} className="hover:underline">
+                        {p.studentName}
+                      </Link>
+                      <span className="text-muted-foreground ml-2 font-normal">
+                        {p.invoiceTitle}
+                      </span>
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      {formatPKR(p.amount)} · ref {p.reference ?? "-"} · {formatDay(p.createdAt)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <form action={verifyPaymentAction}>
+                      <input type="hidden" name="id" value={p.id} />
+                      <Button type="submit" size="sm">
+                        Verify
+                      </Button>
+                    </form>
+                    <form action={rejectPaymentAction}>
+                      <input type="hidden" name="id" value={p.id} />
+                      <Button type="submit" size="sm" variant="outline">
+                        Reject
+                      </Button>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

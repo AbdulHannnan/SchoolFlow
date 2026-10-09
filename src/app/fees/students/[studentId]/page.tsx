@@ -4,9 +4,13 @@ import type { Metadata } from "next";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InvoiceStatusBadge } from "@/components/fees/invoice-status-badge";
-import { getStudentLedger } from "@/server/fees/invoices";
+import { PaymentStatusBadge } from "@/components/fees/payment-status-badge";
+import { RecordPaymentForm } from "@/components/fees/record-payment-form";
+import { SubmitBankTransferForm } from "@/components/fees/submit-bank-transfer-form";
+import { verifySession } from "@/server/auth/dal";
+import { getStudentLedger, type LedgerInvoice } from "@/server/fees/invoices";
 import { formatDay } from "@/lib/attendance";
-import { formatPKR } from "@/lib/money";
+import { formatPKR, PAYMENT_METHOD_LABELS } from "@/lib/money";
 
 export const metadata: Metadata = {
   title: "Ledger - School Management",
@@ -30,6 +34,7 @@ export default function StudentLedgerPage({ params }: { params: Params }) {
 }
 
 async function LedgerContent({ params }: { params: Params }) {
+  const user = await verifySession();
   const { studentId } = await params;
   // getStudentLedger authorizes: HEAD any student, PARENT only a linked child.
   let data: Awaited<ReturnType<typeof getStudentLedger>> | null = null;
@@ -43,6 +48,7 @@ async function LedgerContent({ params }: { params: Params }) {
     return <p className="text-muted-foreground text-sm">{error ?? "Ledger not available."}</p>;
   }
   const { student, invoices, summary } = data;
+  const role = user.role;
 
   return (
     <div className="space-y-6">
@@ -79,46 +85,77 @@ async function LedgerContent({ params }: { params: Params }) {
       {invoices.length === 0 ? (
         <p className="text-muted-foreground text-sm">No invoices for this student yet.</p>
       ) : (
-        invoices.map((inv) => (
-          <Card key={inv.id}>
-            <CardHeader>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <CardTitle className="text-base">
-                  {inv.title}
-                  {inv.dueDate ? (
-                    <span className="text-muted-foreground ml-2 text-sm font-normal">
-                      due {formatDay(inv.dueDate)}
-                    </span>
-                  ) : null}
-                </CardTitle>
-                <InvoiceStatusBadge status={inv.status} />
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <ul className="divide-border divide-y text-sm">
-                {inv.lineItems.map((li) => (
-                  <li key={li.id} className="flex justify-between gap-2 py-1.5">
-                    <span>{li.description}</span>
-                    <span>{formatPKR(li.amount)}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="flex justify-between gap-2 border-t pt-2 text-sm font-medium">
-                <span>Total</span>
-                <span>{formatPKR(inv.total)}</span>
-              </div>
-              {Number(inv.paidAmount) > 0 ? (
-                <div className="text-muted-foreground flex justify-between gap-2 text-sm">
-                  <span>Paid</span>
-                  <span>
-                    {formatPKR(inv.paidAmount)} · balance {formatPKR(inv.balance)}
-                  </span>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
-        ))
+        invoices.map((inv) => <InvoiceCard key={inv.id} inv={inv} role={role} />)
       )}
     </div>
+  );
+}
+
+function InvoiceCard({ inv, role }: { inv: LedgerInvoice; role: string }) {
+  const hasBalance = Number(inv.balance) > 0 && inv.status !== "CANCELLED";
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="text-base">
+            {inv.title}
+            {inv.dueDate ? (
+              <span className="text-muted-foreground ml-2 text-sm font-normal">
+                due {formatDay(inv.dueDate)}
+              </span>
+            ) : null}
+          </CardTitle>
+          <InvoiceStatusBadge status={inv.status} />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <ul className="divide-border divide-y text-sm">
+          {inv.lineItems.map((li) => (
+            <li key={li.id} className="flex justify-between gap-2 py-1.5">
+              <span>{li.description}</span>
+              <span>{formatPKR(li.amount)}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="flex justify-between gap-2 border-t pt-2 text-sm font-medium">
+          <span>Total</span>
+          <span>{formatPKR(inv.total)}</span>
+        </div>
+        <div className="text-muted-foreground flex justify-between gap-2 text-sm">
+          <span>Paid</span>
+          <span>
+            {formatPKR(inv.paidAmount)} · balance {formatPKR(inv.balance)}
+          </span>
+        </div>
+
+        {inv.payments.length > 0 ? (
+          <ul className="space-y-1 border-t pt-2 text-sm">
+            {inv.payments.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-muted-foreground">
+                  {formatDay(p.createdAt)} · {PAYMENT_METHOD_LABELS[p.method]}
+                  {p.reference ? ` · ${p.reference}` : ""}
+                </span>
+                <span className="flex items-center gap-2">
+                  {formatPKR(p.amount)}
+                  <PaymentStatusBadge status={p.status} />
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        {hasBalance && role === "HEAD" ? (
+          <div className="border-t pt-3">
+            <RecordPaymentForm invoiceId={inv.id} defaultAmount={inv.balance} />
+          </div>
+        ) : null}
+        {hasBalance && role === "PARENT" ? (
+          <div className="border-t pt-3">
+            <SubmitBankTransferForm invoiceId={inv.id} defaultAmount={inv.balance} />
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
