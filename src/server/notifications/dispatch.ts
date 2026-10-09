@@ -62,6 +62,16 @@ export type AppEvent =
       entryTitle: string;
       /** Human-readable due date (homework), or null. */
       dueDate: string | null;
+    })
+  | (BaseEvent & {
+      /** A student has an outstanding fee balance (Module 6.4). Recipients are
+       * the student's linked parents. `amount` is a display-ready PKR string;
+       * `dueDate` is a human-readable date or null. */
+      type: "FEE_REMINDER";
+      studentId: string;
+      studentName: string;
+      amount: string;
+      dueDate: string | null;
     });
 
 /** Every implemented channel, keyed by name for per-event targeting. */
@@ -114,6 +124,22 @@ function renderEvent(event: AppEvent): NotificationMessage[] {
         },
       }));
     }
+    case "FEE_REMINDER":
+      return event.recipientIds.map((recipientId) => ({
+        recipientId,
+        type: "FEE_REMINDER",
+        title: `Fee reminder for ${event.studentName}`,
+        body: event.dueDate
+          ? `${event.studentName} has an outstanding balance of ${event.amount}, due ${event.dueDate}. Please clear it at the school office.`
+          : `${event.studentName} has an outstanding balance of ${event.amount}. Please clear it at the school office.`,
+        // Keys consumed by the WhatsApp template (studentName, amount, dueDate).
+        data: {
+          studentId: event.studentId,
+          studentName: event.studentName,
+          amount: event.amount,
+          dueDate: event.dueDate,
+        },
+      }));
   }
 }
 

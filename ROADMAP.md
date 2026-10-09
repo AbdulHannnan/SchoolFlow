@@ -50,7 +50,7 @@
 - [x] 6.1 Fee structure (per class/category)
 - [x] 6.2 Invoice generation + per-student ledger
 - [x] 6.3 Manual payment recording + bank-transfer verification
-- [ ] 6.4 Fee reminder events (via notification engine)
+- [x] 6.4 Fee reminder events (via notification engine)
 - [ ] 6.5 JazzCash integration
 - [ ] 6.6 Easypaisa integration
 

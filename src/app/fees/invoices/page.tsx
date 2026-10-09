@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GenerateInvoicesForm, type InvoiceClass } from "@/components/fees/generate-invoices-form";
 import { InvoiceStatusBadge } from "@/components/fees/invoice-status-badge";
+import { SendRemindersButton } from "@/components/fees/send-reminders-button";
 import { rejectPaymentAction, verifyPaymentAction } from "@/app/fees/actions";
 import { requireRole } from "@/server/auth/dal";
 import { listClassesWithSections } from "@/server/academics/classes";
@@ -67,6 +68,19 @@ async function InvoicesContent({ searchParams }: { searchParams: SearchParams })
           ) : (
             <GenerateInvoicesForm classes={classOptions} defaultMonth={currentMonth()} />
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Fee reminders</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-muted-foreground text-sm">
+            Notify parents of students with an outstanding balance
+            {classId || period ? " (matching the current filter)" : ""}, over in-app and WhatsApp.
+          </p>
+          <SendRemindersButton classId={classId ?? ""} period={period ?? ""} />
         </CardContent>
       </Card>
 

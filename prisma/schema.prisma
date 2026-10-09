@@ -659,6 +659,7 @@ enum NotificationType {
   GENERAL
   ATTENDANCE_ABSENT
   HOMEWORK_POSTED
+  FEE_REMINDER
 
   @@map("notification_type")
 }

@@ -18,6 +18,7 @@ import {
   submitBankTransfer,
   verifyPayment,
 } from "@/server/fees/payments";
+import { sendFeeReminders } from "@/server/fees/reminders";
 import type { FormState } from "@/app/fees/form-state";
 
 const amountField = z
@@ -295,5 +296,34 @@ export async function rejectPaymentAction(formData: FormData): Promise<void> {
   if (id) {
     await rejectPayment(id);
     refresh();
+  }
+}
+
+export async function sendFeeRemindersAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  await requireRole("HEAD");
+
+  const rawClass = String(formData.get("classId") ?? "").trim();
+  const rawPeriod = String(formData.get("period") ?? "").trim();
+  const classId = rawClass === "" ? null : rawClass;
+  const period = /^\d{4}-\d{2}$/.test(rawPeriod) ? rawPeriod : null;
+
+  try {
+    const { students, reminders, skipped } = await sendFeeReminders({ classId, period });
+    refresh();
+    if (students === 0) {
+      return { status: "success", message: "No outstanding fees to remind about." };
+    }
+    const extra =
+      skipped > 0 ? ` (${skipped} student${skipped === 1 ? "" : "s"} had no linked parent)` : "";
+    return {
+      status: "success",
+      message: `Reminders sent to ${reminders} parent${reminders === 1 ? "" : "s"} for ${students} student${students === 1 ? "" : "s"}.${extra}`,
+    };
+  } catch (error) {
+    if (error instanceof Error) return { status: "error", message: error.message };
+    throw error;
   }
 }

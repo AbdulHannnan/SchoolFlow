@@ -4,7 +4,7 @@ A multi-tenant school management platform: attendance, homework/diary, fees,
 and a channel-agnostic notification engine (in-app, email, WhatsApp, web push),
 built for schools in Pakistan.
 
-> Status: **Module 6.3 complete - payments: a head records manual payments (applied immediately) and verifies/rejects parent-submitted bank-transfer claims; each applied payment recomputes the invoice's paid amount and status. Ledgers now show live balances.** Next: Module 6.4 - fee reminder events (via the notification engine). See the roadmap.
+> Status: **Module 6.4 complete - fee reminders: a head notifies parents of students with outstanding balances (aggregated per student) through the notification engine, in-app and WhatsApp. Only payment gateways (6.5/6.6) remain before the MVP ships.** Next: Module 6.5 - JazzCash integration. See the roadmap.
 
 ## Tech stack
 

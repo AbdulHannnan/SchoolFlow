@@ -42,4 +42,15 @@ export const WHATSAPP_TEMPLATES: Partial<Record<NotificationType, WhatsAppTempla
       dataString(message.data, "date") ?? "",
     ],
   },
+  // Approved body, e.g.: "Dear parent, {{1}} has an outstanding fee of {{2}}.
+  // Please clear it at the school office." Module 6.4 populates `data.studentName`
+  // and `data.amount` (a display-ready PKR string) when it emits this event.
+  FEE_REMINDER: {
+    name: process.env.WHATSAPP_TEMPLATE_FEE_REMINDER ?? "fee_reminder",
+    languageCode: process.env.WHATSAPP_TEMPLATE_LANGUAGE ?? "en",
+    buildBodyParameters: (message) => [
+      dataString(message.data, "studentName") ?? message.title,
+      dataString(message.data, "amount") ?? "",
+    ],
+  },
 };
