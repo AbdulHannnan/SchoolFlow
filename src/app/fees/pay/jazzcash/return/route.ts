@@ -1,4 +1,5 @@
 import { getJazzCashConfig, verifyJazzCashReturn } from "@/server/fees/gateways/jazzcash";
+import { redirectWith } from "@/server/fees/gateways/http";
 import { applyGatewayPayment } from "@/server/fees/payments";
 
 /**
@@ -45,8 +46,4 @@ async function readFields(request: Request): Promise<Record<string, string>> {
     for (const [key, value] of new URL(request.url).searchParams.entries()) out[key] = value;
   }
   return out;
-}
-
-function redirectWith(base: string, path: string, status: string): Response {
-  return Response.redirect(new URL(`${path}?pay=${status}`, base).toString(), 303);
 }

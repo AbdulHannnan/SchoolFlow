@@ -52,7 +52,7 @@
 - [x] 6.3 Manual payment recording + bank-transfer verification
 - [x] 6.4 Fee reminder events (via notification engine)
 - [x] 6.5 JazzCash integration
-- [ ] 6.6 Easypaisa integration
+- [x] 6.6 Easypaisa integration
 
 ## Module 7 - Progress, Exams & Red Flags (Phase 2)
 

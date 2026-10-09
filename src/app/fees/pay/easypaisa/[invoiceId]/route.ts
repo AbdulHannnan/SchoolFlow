@@ -1,21 +1,22 @@
 import { requireSchool } from "@/server/auth/dal";
 import { withTenant } from "@/server/db/tenant";
 import {
-  buildJazzCashRequest,
-  getJazzCashConfig,
-  newTxnRef,
-} from "@/server/fees/gateways/jazzcash";
+  buildEasypaisaRequest,
+  getEasypaisaConfig,
+  newOrderRef,
+} from "@/server/fees/gateways/easypaisa";
 import {
   autoSubmitFormResponse,
   redirectWith,
   unconfiguredResponse,
 } from "@/server/fees/gateways/http";
+import { createGatewayIntent } from "@/server/fees/payments";
 
 /**
- * Initiate a JazzCash payment for an invoice (Module 6.5). Authorizes the
- * caller (the linked parent, or a head), then returns a self-submitting form
- * that POSTs the signed `pp_*` fields to JazzCash. Dev-safe: if the gateway
- * isn't configured, shows a short page instead.
+ * Initiate an Easypaisa payment for an invoice (Module 6.6). Authorizes the
+ * caller (linked parent, or head), records a PENDING intent keyed by the order
+ * ref, then returns a self-submitting form that POSTs to Easypay. Dev-safe when
+ * the gateway isn't configured.
  */
 export async function GET(request: Request, ctx: { params: Promise<{ invoiceId: string }> }) {
   const { invoiceId } = await ctx.params;
@@ -25,14 +26,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ invoiceId: 
   const invoice = await withTenant(schoolId, async (tx) => {
     const inv = await tx.invoice.findUnique({
       where: { id: invoiceId },
-      select: {
-        id: true,
-        studentId: true,
-        title: true,
-        total: true,
-        paidAmount: true,
-        status: true,
-      },
+      select: { id: true, studentId: true, total: true, paidAmount: true, status: true },
     });
     if (!inv) return null;
     if (user.role === "PARENT") {
@@ -53,15 +47,19 @@ export async function GET(request: Request, ctx: { params: Promise<{ invoiceId: 
   const balance = Number(invoice.total.toString()) - Number(invoice.paidAmount.toString());
   if (invoice.status === "CANCELLED" || balance <= 0) return redirectWith(base, ledger, "nothing");
 
-  const config = getJazzCashConfig();
-  if (!config) return unconfiguredResponse(ledger, "JazzCash");
+  const config = getEasypaisaConfig();
+  if (!config) return unconfiguredResponse(ledger, "Easypaisa");
 
-  const { postUrl, fields } = buildJazzCashRequest(config, {
+  const amount = balance.toFixed(2);
+  const orderRefNum = newOrderRef();
+  await createGatewayIntent({
+    schoolId,
     invoiceId: invoice.id,
-    amountPaisa: Math.round(balance * 100),
-    txnRef: newTxnRef(),
-    description: `Fee payment - ${invoice.title}`,
+    method: "EASYPAISA",
+    reference: orderRefNum,
+    amount,
   });
 
-  return autoSubmitFormResponse(postUrl, fields, "JazzCash");
+  const { postUrl, fields } = buildEasypaisaRequest(config, { amount, orderRefNum });
+  return autoSubmitFormResponse(postUrl, fields, "Easypaisa");
 }

@@ -188,9 +188,14 @@ function InvoiceCard({ inv, role }: { inv: LedgerInvoice; role: string }) {
         ) : null}
         {hasBalance && role === "PARENT" ? (
           <div className="space-y-3 border-t pt-3">
-            <Button asChild size="sm" variant="secondary">
-              <Link href={`/fees/pay/jazzcash/${inv.id}`}>Pay with JazzCash</Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="sm" variant="secondary">
+                <Link href={`/fees/pay/jazzcash/${inv.id}`}>Pay with JazzCash</Link>
+              </Button>
+              <Button asChild size="sm" variant="secondary">
+                <Link href={`/fees/pay/easypaisa/${inv.id}`}>Pay with Easypaisa</Link>
+              </Button>
+            </div>
             <SubmitBankTransferForm invoiceId={inv.id} defaultAmount={inv.balance} />
           </div>
         ) : null}

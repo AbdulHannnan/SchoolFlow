@@ -162,6 +162,79 @@ export async function applyGatewayPayment(input: {
   return { studentId };
 }
 
+/**
+ * Record a PENDING gateway "intent" when a payment is initiated (Module 6.6).
+ * Keyed by the gateway `reference` (our order ref) so the return handler can
+ * settle only an intent we actually issued, and with the amount captured from
+ * our side. `schoolId` comes from the caller's verified session (the route
+ * already authorized the invoice), so this writes within that tenant.
+ */
+export async function createGatewayIntent(input: {
+  schoolId: string;
+  invoiceId: string;
+  method: PaymentMethod;
+  reference: string;
+  amount: string;
+}): Promise<void> {
+  await withTenant(input.schoolId, async (tx) => {
+    const invoice = await tx.invoice.findUnique({
+      where: { id: input.invoiceId },
+      select: { id: true },
+    });
+    if (!invoice) throw new Error("Invoice not found");
+    await tx.payment.create({
+      data: {
+        schoolId: input.schoolId,
+        invoiceId: input.invoiceId,
+        amount: input.amount,
+        method: input.method,
+        reference: input.reference,
+        status: "PENDING",
+      },
+    });
+  });
+}
+
+/**
+ * Settle a gateway intent from its return callback (Module 6.6). No session:
+ * resolves the intent across tenants by `reference` via the owner client, then
+ * within its tenant marks it VERIFIED (and recomputes the invoice) or REJECTED.
+ * Idempotent — an already-settled intent is left as-is. Returns the student for
+ * a redirect, or null if no such intent exists (e.g. a forged callback).
+ */
+export async function settleGatewayIntent(input: {
+  reference: string;
+  success: boolean;
+}): Promise<{ studentId: string } | null> {
+  const payment = await prisma.payment.findFirst({
+    where: { reference: input.reference },
+    select: {
+      id: true,
+      schoolId: true,
+      status: true,
+      invoiceId: true,
+      invoice: { select: { studentId: true } },
+    },
+  });
+  if (!payment) return null;
+  const studentId = payment.invoice.studentId;
+  if (payment.status !== "PENDING") return { studentId };
+
+  await withTenant(payment.schoolId, async (tx) => {
+    if (input.success) {
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: { status: "VERIFIED", verifiedAt: new Date() },
+      });
+      await recomputeInvoice(tx, payment.invoiceId);
+    } else {
+      await tx.payment.update({ where: { id: payment.id }, data: { status: "REJECTED" } });
+    }
+  });
+
+  return { studentId };
+}
+
 /** Verify a pending payment and apply it to its invoice (HEAD). */
 export async function verifyPayment(id: string): Promise<void> {
   const { schoolId } = await requireSchool();
@@ -203,12 +276,16 @@ export type PendingPaymentRow = {
   studentName: string;
 };
 
-/** Pending bank-transfer claims awaiting verification (HEAD), oldest first. */
+/**
+ * Pending bank-transfer claims awaiting manual verification (HEAD), oldest
+ * first. Scoped to BANK_TRANSFER so gateway intents (PENDING until their return
+ * settles them automatically) never show up as needing manual action.
+ */
 export async function listPendingPayments(): Promise<PendingPaymentRow[]> {
   const { schoolId } = await requireSchool();
   const rows = await withTenant(schoolId, (tx) =>
     tx.payment.findMany({
-      where: { status: "PENDING" },
+      where: { status: "PENDING", method: "BANK_TRANSFER" },
       orderBy: { createdAt: "asc" },
       select: {
         id: true,
