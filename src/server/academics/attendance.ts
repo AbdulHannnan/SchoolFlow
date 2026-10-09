@@ -6,6 +6,7 @@ import type { Session } from "next-auth";
 
 import { requireSchool } from "@/server/auth/dal";
 import { withTenant } from "@/server/db/tenant";
+import { dispatch } from "@/server/notifications/dispatch";
 
 /**
  * Attendance (Module 3.1). Daily, one record per student per calendar day.
@@ -115,6 +116,12 @@ export async function getClassAttendanceForDate(input: {
  * is captured from their current record so historical reports stay correct
  * after a promotion. Entries for students not in this class/section are
  * rejected (FK targets are re-checked in-tenant; see the RLS FK gap note).
+ *
+ * Marking a student ABSENT who was not already ABSENT for that day fires the
+ * attendance-absent event (Module 4.6), fanned out to the student's linked
+ * parents over in-app + WhatsApp. Keying off the transition means re-saving the
+ * same sheet never re-alerts. The event is dispatched after the transaction
+ * commits, so a rolled-back save never notifies anyone.
  */
 export async function saveClassAttendance(input: {
   classId: string;
@@ -124,7 +131,8 @@ export async function saveClassAttendance(input: {
 }) {
   const { user, schoolId } = await requireSchool();
   const date = toDateOnly(input.date);
-  return withTenant(schoolId, async (tx) => {
+
+  const { saved, alerts } = await withTenant(schoolId, async (tx) => {
     const cls = await tx.class.findUnique({ where: { id: input.classId } });
     if (!cls) throw new Error("Class not found");
     await assertCanMarkClass(tx, user, input.classId);
@@ -140,10 +148,21 @@ export async function saveClassAttendance(input: {
     });
     const sectionByStudent = new Map(students.map((s) => [s.id, s.sectionId]));
 
+    // Prior status for this date, to alert only on a *transition* into ABSENT.
+    const prior = await tx.attendance.findMany({
+      where: { date, studentId: { in: input.entries.map((e) => e.studentId) } },
+      select: { studentId: true, status: true },
+    });
+    const priorStatus = new Map(prior.map((r) => [r.studentId, r.status]));
+
+    const newlyAbsent: string[] = [];
     let saved = 0;
     for (const entry of input.entries) {
       if (!sectionByStudent.has(entry.studentId)) {
         throw new Error("Student does not belong to the selected class");
+      }
+      if (entry.status === "ABSENT" && priorStatus.get(entry.studentId) !== "ABSENT") {
+        newlyAbsent.push(entry.studentId);
       }
       const note = entry.note?.trim() ? entry.note.trim() : null;
       await tx.attendance.upsert({
@@ -167,8 +186,75 @@ export async function saveClassAttendance(input: {
       });
       saved += 1;
     }
-    return { saved };
+
+    // Resolve each newly-absent student's name and linked parents, still inside
+    // the tenant context, so the post-commit dispatch has everything it needs.
+    const alerts: { studentId: string; studentName: string; parentIds: string[] }[] = [];
+    if (newlyAbsent.length > 0) {
+      const absentStudents = await tx.student.findMany({
+        where: { id: { in: newlyAbsent } },
+        select: { id: true, name: true },
+      });
+      const links = await tx.parentStudent.findMany({
+        where: { studentId: { in: newlyAbsent } },
+        select: { studentId: true, parentId: true },
+      });
+      const parentsByStudent = new Map<string, string[]>();
+      for (const link of links) {
+        const list = parentsByStudent.get(link.studentId) ?? [];
+        list.push(link.parentId);
+        parentsByStudent.set(link.studentId, list);
+      }
+      for (const student of absentStudents) {
+        alerts.push({
+          studentId: student.id,
+          studentName: student.name,
+          parentIds: parentsByStudent.get(student.id) ?? [],
+        });
+      }
+    }
+
+    return { saved, alerts };
   });
+
+  await emitAbsenceAlerts(schoolId, date, alerts);
+  return { saved };
+}
+
+/** Human-readable date for a parent-facing alert, e.g. "09 Oct 2026" (UTC). */
+function formatAlertDate(date: Date): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+/**
+ * Fire one attendance-absent event per newly-absent student with linked
+ * parents. Dispatched on in-app + WhatsApp; the dispatcher isolates channel
+ * failures, so a WhatsApp outage never fails the teacher's save. Students with
+ * no linked parent are skipped (no one to notify).
+ */
+async function emitAbsenceAlerts(
+  schoolId: string,
+  date: Date,
+  alerts: { studentId: string; studentName: string; parentIds: string[] }[],
+): Promise<void> {
+  const displayDate = formatAlertDate(date);
+  for (const alert of alerts) {
+    if (alert.parentIds.length === 0) continue;
+    await dispatch({
+      type: "ATTENDANCE_ABSENT",
+      schoolId,
+      recipientIds: alert.parentIds,
+      studentId: alert.studentId,
+      studentName: alert.studentName,
+      date: displayDate,
+      channels: ["in-app", "whatsapp"],
+    });
+  }
 }
 
 /* ---------------------------------------------------------------------------

@@ -21,20 +21,35 @@ import type {
  * change to the code that emits events.
  */
 
-/** An occurrence worth notifying someone about. The union grows per module —
- * e.g. Module 4.6 adds the attendance "absent" alert fanned out to a student's
- * parents, Module 5 adds homework posts, Module 6 adds fee reminders. */
-export type AppEvent = {
-  type: "GENERAL";
+/** Fields every event carries: the tenant, the recipients, and the channels to
+ * deliver on. Channels default to in-app only; events opt into email (4.2),
+ * WhatsApp (4.3) and push (4.4) per occurrence so external sends are deliberate. */
+type BaseEvent = {
   schoolId: string;
   recipientIds: string[];
-  title: string;
-  body: string;
-  data?: Record<string, unknown> | null;
-  /** Channels to deliver on. Defaults to in-app only; opt into email (4.2) and,
-   * later, WhatsApp/push per event so external sends are deliberate. */
   channels?: ChannelName[];
 };
+
+/** An occurrence worth notifying someone about. The union grows per module —
+ * Module 4.6 adds the attendance "absent" alert fanned out to a student's
+ * parents; Module 5 adds homework posts, Module 6 adds fee reminders. */
+export type AppEvent =
+  | (BaseEvent & {
+      type: "GENERAL";
+      title: string;
+      body: string;
+      data?: Record<string, unknown> | null;
+    })
+  | (BaseEvent & {
+      /** A student was marked absent (Module 4.6). Recipients are the student's
+       * linked parents. Carries the student and date so the WhatsApp template
+       * (and any deep link) can be rendered without another lookup. */
+      type: "ATTENDANCE_ABSENT";
+      studentId: string;
+      studentName: string;
+      /** Human-readable date the absence was recorded for (e.g. "09 Oct 2026"). */
+      date: string;
+    });
 
 /** Every implemented channel, keyed by name for per-event targeting. */
 const channels: NotificationChannel[] = [
@@ -57,6 +72,16 @@ function renderEvent(event: AppEvent): NotificationMessage[] {
         title: event.title,
         body: event.body,
         data: event.data ?? null,
+      }));
+    case "ATTENDANCE_ABSENT":
+      return event.recipientIds.map((recipientId) => ({
+        recipientId,
+        type: "ATTENDANCE_ABSENT",
+        title: `${event.studentName} was marked absent`,
+        body: `${event.studentName} was marked absent on ${event.date}. Please contact the school if this is unexpected.`,
+        // Keys consumed by the WhatsApp template (studentName, date); studentId
+        // is kept for an in-app deep link to the child's attendance.
+        data: { studentId: event.studentId, studentName: event.studentName, date: event.date },
       }));
   }
 }

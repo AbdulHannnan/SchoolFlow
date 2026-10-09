@@ -37,7 +37,7 @@
 - [x] 4.3 WhatsApp channel (Cloud API/BSP), utility templates, event-triggered only
 - [x] 4.4 Web Push (FCM)
 - [x] 4.5 Scheduler (node-cron) for batched/scheduled sends
-- [ ] 4.6 Wire attendance "absent" event -> WhatsApp alert to parent
+- [x] 4.6 Wire attendance "absent" event -> WhatsApp alert to parent
 
 ## Module 5 - Homework / Daily Diary
 
