@@ -59,7 +59,7 @@
 - [x] 7.1 Exam + grade model
 - [x] 7.2 Grade entry + report cards
 - [x] 7.3 Red-flag rules (attendance/grades thresholds) + alerts
-- [ ] 7.4 Student progress dashboard
+- [x] 7.4 Student progress dashboard
 
 ## Module 8 - Staff / Teacher Side (Phase 2)
 
