@@ -53,6 +53,7 @@ model School {
   exams                  Exam[]
   examSubjects           ExamSubject[]
   examResults            ExamResult[]
+  redFlags               RedFlag[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -103,6 +104,7 @@ model User {
   diaryEntries       DiaryEntry[]
   paymentsRecorded   Payment[]
   examResultsRecorded ExamResult[]
+  redFlagsResolved   RedFlag[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -188,6 +190,7 @@ model Student {
   attendance  Attendance[]
   invoices    Invoice[]
   examResults ExamResult[]
+  redFlags    RedFlag[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -680,6 +683,59 @@ model ExamResult {
   @@map("exam_results")
 }
 
+/// An at-risk indicator raised for a student (Module 7.3) when a rule crosses a
+/// threshold — low attendance in a month, or weak results in a published exam.
+/// A HEAD-triggered scan evaluates the rules and upserts flags; `key` makes a
+/// flag idempotent per student and context (e.g. "ATTENDANCE_LOW:2026-10",
+/// "EXAM_RESULT:<examId>"), so re-scanning refreshes the detail instead of
+/// duplicating. `title`/`detail` are the human-readable explanation shown to
+/// staff and carried into the RED_FLAG alert. `status` lets a HEAD resolve a
+/// flag they've acted on (and reopen it); `resolvedById` is a single-column
+/// SetNull audit FK to the actor (like Attendance.markedBy), so the flag
+/// survives if that account is removed. Tenant-scoped via RLS; the student is
+/// pinned to the same school by a composite FK.
+model RedFlag {
+  id           String        @id @default(cuid())
+  schoolId     String
+  school       School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      Student       @relation(fields: [schoolId, studentId], references: [schoolId, id], onDelete: Cascade)
+  type         RedFlagType
+  key          String
+  title        String
+  detail       String
+  status       RedFlagStatus @default(OPEN)
+  resolvedById String?
+  resolvedBy   User?         @relation(fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, key])
+  @@index([schoolId])
+  @@index([schoolId, status])
+  @@index([studentId])
+  @@map("red_flags")
+}
+
+/// What kind of rule raised a red flag (Module 7.3).
+enum RedFlagType {
+  ATTENDANCE_LOW
+  GRADES_LOW
+
+  @@map("red_flag_type")
+}
+
+/// A red flag's lifecycle: OPEN until a HEAD acts on it, then RESOLVED (and it
+/// can be reopened).
+enum RedFlagStatus {
+  OPEN
+  RESOLVED
+
+  @@map("red_flag_status")
+}
+
 /// A delivered notification for one recipient (Module 4.1). This is the in-app
 /// channel's record: one row per (event, recipient). The notification engine is
 /// channel-agnostic — an event is dispatched once and each enabled channel
@@ -780,6 +836,7 @@ enum NotificationType {
   ATTENDANCE_ABSENT
   HOMEWORK_POSTED
   FEE_REMINDER
+  RED_FLAG
 
   @@map("notification_type")
 }

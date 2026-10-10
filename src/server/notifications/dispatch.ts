@@ -72,6 +72,15 @@ export type AppEvent =
       studentName: string;
       amount: string;
       dueDate: string | null;
+    })
+  | (BaseEvent & {
+      /** A red flag was raised for an at-risk student (Module 7.3). Recipients
+       * are the school's HEADs. `reason` is the human-readable explanation
+       * (e.g. "5 absences in October 2026"). */
+      type: "RED_FLAG";
+      studentId: string;
+      studentName: string;
+      reason: string;
     });
 
 /** Every implemented channel, keyed by name for per-event targeting. */
@@ -139,6 +148,14 @@ function renderEvent(event: AppEvent): NotificationMessage[] {
           amount: event.amount,
           dueDate: event.dueDate,
         },
+      }));
+    case "RED_FLAG":
+      return event.recipientIds.map((recipientId) => ({
+        recipientId,
+        type: "RED_FLAG",
+        title: `Red flag: ${event.studentName}`,
+        body: `${event.studentName} — ${event.reason}. Review and follow up.`,
+        data: { studentId: event.studentId, studentName: event.studentName, reason: event.reason },
       }));
   }
 }
