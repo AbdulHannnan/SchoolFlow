@@ -50,6 +50,9 @@ model School {
   invoices               Invoice[]
   invoiceLineItems       InvoiceLineItem[]
   payments               Payment[]
+  exams                  Exam[]
+  examSubjects           ExamSubject[]
+  examResults            ExamResult[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -99,6 +102,7 @@ model User {
   scheduledNotifications ScheduledNotification[]
   diaryEntries       DiaryEntry[]
   paymentsRecorded   Payment[]
+  examResultsRecorded ExamResult[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -126,6 +130,7 @@ model Class {
   diaryEntries       DiaryEntry[]
   feeStructures      FeeStructure[]
   invoices           Invoice[]
+  exams              Exam[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -182,6 +187,7 @@ model Student {
   parentLinks ParentStudent[]
   attendance  Attendance[]
   invoices    Invoice[]
+  examResults ExamResult[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -246,6 +252,7 @@ model Subject {
 
   teacherAssignments TeacherAssignment[]
   diaryEntries       DiaryEntry[]
+  examSubjects       ExamSubject[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -560,6 +567,117 @@ model Payment {
   @@index([schoolId, status])
   @@index([invoiceId])
   @@map("payments")
+}
+
+/// An assessment event for one class (Module 7.1) — e.g. "First Term Exam" or
+/// "October Monthly Test". An exam groups the subject papers a class sits
+/// together (`ExamSubject`); each student's marks per paper are recorded as
+/// `ExamResult`. `type` classifies it (term exam, monthly test, quiz, …) and
+/// `term` is an optional free-text grouping ("Term 1", "2025-2026") that report
+/// cards (Module 7.2) aggregate by. `classId` is a composite FK so the exam
+/// stays in one school. `isPublished` gates whether results are visible to
+/// parents/students — results are published as report cards in Module 7.2.
+/// Tenant-scoped via RLS; `@@unique([schoolId, id])` lets exam subjects
+/// reference it with a tenant-safe composite FK.
+model Exam {
+  id          String    @id @default(cuid())
+  schoolId    String
+  school      School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId     String
+  class       Class     @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
+  name        String
+  type        ExamType  @default(TERM)
+  term        String?
+  startDate   DateTime? @db.Date
+  isPublished Boolean   @default(false)
+
+  subjects ExamSubject[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, id])
+  @@index([schoolId])
+  @@index([classId])
+  @@map("exams")
+}
+
+/// The kind of assessment an Exam represents (Module 7.1).
+enum ExamType {
+  TERM
+  MIDTERM
+  FINAL
+  MONTHLY
+  QUIZ
+  ASSIGNMENT
+  OTHER
+
+  @@map("exam_type")
+}
+
+/// One subject paper within an Exam (Module 7.1) — e.g. "Mathematics" in the
+/// First Term Exam — carrying that paper's `maxMarks` and an optional
+/// `passMarks`. Composite FKs keep exam and subject in one school: the exam
+/// cascades (deleting an exam removes its papers), while the subject uses
+/// NoAction so a subject still referenced by an exam can't be deleted out from
+/// under it (history is preserved, as with diary/invoice references). One row
+/// per subject per exam. Marks are a fixed-scale Decimal, never a float.
+/// Tenant-scoped via RLS; `@@unique([schoolId, id])` lets results reference it
+/// with a tenant-safe composite FK.
+model ExamSubject {
+  id        String   @id @default(cuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  examId    String
+  exam      Exam     @relation(fields: [schoolId, examId], references: [schoolId, id], onDelete: Cascade)
+  subjectId String
+  subject   Subject  @relation(fields: [schoolId, subjectId], references: [schoolId, id], onDelete: NoAction)
+  maxMarks  Decimal  @db.Decimal(6, 2)
+  passMarks Decimal? @db.Decimal(6, 2)
+
+  results ExamResult[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([examId, subjectId])
+  @@unique([schoolId, id])
+  @@index([schoolId])
+  @@index([examId])
+  @@map("exam_subjects")
+}
+
+/// One student's result for one subject paper in an exam (Module 7.1). Marks
+/// are entered in Module 7.2, so `marksObtained` is null until entered;
+/// `isAbsent` records a student who missed the paper (distinct from a scored
+/// zero). Composite FKs keep exam-subject and student in one school, both
+/// cascading so results clear when either is removed. `recordedById` is the
+/// actor who entered the mark — a single-column SetNull FK (audit only, like
+/// Attendance.markedBy), so the result survives if that account is later
+/// removed. One row per student per paper, which makes mark entry idempotent.
+/// Tenant-scoped via RLS.
+model ExamResult {
+  id            String      @id @default(cuid())
+  schoolId      String
+  school        School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  examSubjectId String
+  examSubject   ExamSubject @relation(fields: [schoolId, examSubjectId], references: [schoolId, id], onDelete: Cascade)
+  studentId     String
+  student       Student     @relation(fields: [schoolId, studentId], references: [schoolId, id], onDelete: Cascade)
+  marksObtained Decimal?    @db.Decimal(6, 2)
+  isAbsent      Boolean     @default(false)
+  remarks       String?
+  recordedById  String?
+  recordedBy    User?       @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([examSubjectId, studentId])
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([examSubjectId])
+  @@map("exam_results")
 }
 
 /// A delivered notification for one recipient (Module 4.1). This is the in-app
