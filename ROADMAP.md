@@ -57,7 +57,7 @@
 ## Module 7 - Progress, Exams & Red Flags (Phase 2)
 
 - [x] 7.1 Exam + grade model
-- [ ] 7.2 Grade entry + report cards
+- [x] 7.2 Grade entry + report cards
 - [ ] 7.3 Red-flag rules (attendance/grades thresholds) + alerts
 - [ ] 7.4 Student progress dashboard
 

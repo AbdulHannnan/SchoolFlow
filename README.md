@@ -4,7 +4,7 @@ A multi-tenant school management platform: attendance, homework/diary, fees,
 and a channel-agnostic notification engine (in-app, email, WhatsApp, web push),
 built for schools in Pakistan.
 
-> Status: **MVP complete (Modules 0-6).** Multi-tenant school management with RLS isolation, auth/RBAC, core school data, attendance, a four-channel notification engine with a scheduler, homework/diary, and fees end-to-end: structure, invoices, per-student ledgers, manual + bank-transfer payments, reminders, and online payments via JazzCash and Easypaisa. Phase 2 in progress: Module 7.1 (exam + grade data model) done; next is 7.2 (grade entry + report cards), then red-flags, staff side, portals/dashboards, PWA/localization/deploy.
+> Status: **MVP complete (Modules 0-6).** Multi-tenant school management with RLS isolation, auth/RBAC, core school data, attendance, a four-channel notification engine with a scheduler, homework/diary, and fees end-to-end: structure, invoices, per-student ledgers, manual + bank-transfer payments, reminders, and online payments via JazzCash and Easypaisa. Phase 2 in progress: Module 7.1 (exam + grade data model) and 7.2 (grade entry + report cards) done; next is 7.3 (red-flag rules + alerts), then the student progress dashboard, staff side, portals/dashboards, PWA/localization/deploy.
 
 ## Tech stack
 
