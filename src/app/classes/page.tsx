@@ -8,8 +8,13 @@ import { CreateClassForm } from "@/components/academics/create-class-form";
 import { AddSectionForm } from "@/components/academics/add-section-form";
 import { ClassActions } from "@/components/academics/class-actions";
 import { SectionActions } from "@/components/academics/section-actions";
+import { ClassSubjects } from "@/components/academics/class-subjects";
 import { requireRole } from "@/server/auth/dal";
-import { listClassesWithSections, listTeacherOptions } from "@/server/academics/classes";
+import {
+  listClassesWithSections,
+  listTeacherOptions,
+  listSubjectOptions,
+} from "@/server/academics/classes";
 import { User as UserIcon, GraduationCap } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -28,7 +33,11 @@ export default function ClassesPage() {
 
 async function ClassesContent() {
   await requireRole("HEAD");
-  const [classes, teachers] = await Promise.all([listClassesWithSections(), listTeacherOptions()]);
+  const [classes, teachers, subjects] = await Promise.all([
+    listClassesWithSections(),
+    listTeacherOptions(),
+    listSubjectOptions(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -57,14 +66,22 @@ async function ClassesContent() {
                       </span>
                     ) : null}
                   </CardTitle>
-                  <ClassActions
-                    id={cls.id}
-                    name={cls.name}
-                    level={cls.level}
-                    classTeacherId={cls.classTeacherId}
-                    studentCount={cls._count.students}
-                    teachers={teachers}
-                  />
+                  <div className="flex items-center gap-1">
+                    <ClassSubjects
+                      classId={cls.id}
+                      assignments={cls.teacherAssignments}
+                      subjects={subjects}
+                      teachers={teachers}
+                    />
+                    <ClassActions
+                      id={cls.id}
+                      name={cls.name}
+                      level={cls.level}
+                      classTeacherId={cls.classTeacherId}
+                      studentCount={cls._count.students}
+                      teachers={teachers}
+                    />
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">

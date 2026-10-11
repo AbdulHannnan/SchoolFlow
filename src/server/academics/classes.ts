@@ -24,13 +24,23 @@ export function listClassesWithSections() {
           },
         },
         classTeacher: { select: { id: true, name: true } },
+        teacherAssignments: {
+          orderBy: { subject: { name: "asc" } },
+          select: {
+            id: true,
+            subjectId: true,
+            teacherId: true,
+            subject: { select: { name: true } },
+            teacher: { select: { name: true } },
+          },
+        },
         _count: { select: { students: true } },
       },
     }),
   );
 }
 
-/** Active teachers (id + name) for the class-teacher picker. */
+/** Active teachers (id + name) for the class/section teacher pickers. */
 export function listTeacherOptions() {
   return withCurrentTenant((tx) =>
     tx.user.findMany({
@@ -38,6 +48,13 @@ export function listTeacherOptions() {
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
+  );
+}
+
+/** Subjects (id + name) for the per-class subject picker. */
+export function listSubjectOptions() {
+  return withCurrentTenant((tx) =>
+    tx.subject.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   );
 }
 
