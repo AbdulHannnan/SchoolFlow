@@ -1,12 +1,14 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { forbidden } from "next/navigation";
 import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { AttendancePicker, type MarkableClass } from "@/components/academics/attendance-picker";
 import { MarkAttendanceForm } from "@/components/academics/mark-attendance-form";
 import { AttendanceSummary } from "@/components/academics/attendance-summary";
@@ -15,10 +17,12 @@ import { MonthNav } from "@/components/academics/month-nav";
 import { verifySession } from "@/server/auth/dal";
 import {
   getClassAttendanceForDate,
+  getClassAttendanceOverview,
   listChildrenAttendance,
   listMarkableClasses,
 } from "@/server/academics/attendance";
-import { monthLabel, normalizeMonth } from "@/lib/attendance";
+import { listClassesWithSections } from "@/server/academics/classes";
+import { monthLabel, normalizeMonth, statusLabel, statusBadgeClass } from "@/lib/attendance";
 
 export const metadata: Metadata = {
   title: "Attendance - School Management",
@@ -53,11 +57,15 @@ async function AttendanceContent({ searchParams }: { searchParams: SearchParams 
   if (user.role === "PARENT") {
     return <ParentAttendance month={normalizeMonth(sp.month)} />;
   }
-  if (user.role !== "TEACHER" && user.role !== "HEAD") {
+  // Head reads only - a class drill-down, never the marking grid.
+  if (user.role === "HEAD") {
+    return sp.classId ? <HeadClassAttendance classId={sp.classId} /> : <HeadAttendanceOverview />;
+  }
+  if (user.role !== "TEACHER") {
     forbidden();
   }
 
-  // Teacher / Head: the marking flow.
+  // Teacher: the marking flow.
   const classes = await listMarkableClasses();
 
   const date = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : todayISO();
@@ -128,6 +136,137 @@ async function AttendanceContent({ searchParams }: { searchParams: SearchParams 
           roster={roster.roster}
         />
       ) : null}
+    </div>
+  );
+}
+
+async function HeadAttendanceOverview() {
+  const classes = await listClassesWithSections();
+
+  return (
+    <div className="space-y-4">
+      <p className="text-muted-foreground text-sm">
+        Attendance is marked by each class&apos;s teacher. Pick a class to review it.
+      </p>
+      {classes.length === 0 ? (
+        <p className="text-muted-foreground text-sm">No classes yet.</p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {classes.map((cls) => (
+            <Link
+              key={cls.id}
+              href={`/attendance?classId=${encodeURIComponent(cls.id)}`}
+              className="focus-visible:ring-ring rounded-xl focus-visible:ring-2 focus-visible:outline-none"
+            >
+              <Card className="hover:border-primary/50 hover:bg-accent/40 h-full transition-colors">
+                <CardHeader>
+                  <CardTitle className="text-base">{cls.name}</CardTitle>
+                  <CardDescription>
+                    {cls._count.students} {cls._count.students === 1 ? "student" : "students"}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+async function HeadClassAttendance({ classId }: { classId: string }) {
+  const { class: cls, rows } = await getClassAttendanceOverview(classId);
+
+  return (
+    <div className="space-y-4">
+      <Link
+        href="/attendance"
+        className="text-muted-foreground hover:text-foreground -ml-1 inline-flex items-center gap-1 text-sm"
+      >
+        <ArrowLeft className="size-4" />
+        All classes
+      </Link>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            {cls.name}
+            <span className="text-muted-foreground ml-2 text-sm font-normal">
+              attendance this month
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {rows.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No active students in this class.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-muted-foreground border-b text-left">
+                    <th className="py-2 pr-3 font-medium">Student</th>
+                    <th className="py-2 pr-3 font-medium">Today</th>
+                    <th className="w-1/2 py-2 font-medium">This month</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => {
+                    const pct =
+                      r.monthTotal > 0 ? Math.round((r.monthPresent / r.monthTotal) * 100) : 0;
+                    return (
+                      <tr key={r.studentId} className="border-b last:border-0">
+                        <td className="py-2 pr-3">
+                          <span className="font-medium">{r.name}</span>
+                          {r.rollNumber ? (
+                            <span className="text-muted-foreground ml-2">#{r.rollNumber}</span>
+                          ) : null}
+                        </td>
+                        <td className="py-2 pr-3">
+                          {r.todayStatus ? (
+                            <Badge variant="outline" className={statusBadgeClass(r.todayStatus)}>
+                              {statusLabel(r.todayStatus)}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs italic">not marked</span>
+                          )}
+                        </td>
+                        <td className="py-2">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="bg-muted h-2 flex-1 overflow-hidden rounded-full"
+                              role="progressbar"
+                              aria-valuenow={pct}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                            >
+                              <div
+                                className={cn(
+                                  "h-full rounded-full",
+                                  pct >= 75
+                                    ? "bg-green-500"
+                                    : pct >= 40
+                                      ? "bg-amber-500"
+                                      : "bg-red-500",
+                                )}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="text-muted-foreground w-24 shrink-0 text-right text-xs">
+                              {r.monthTotal > 0
+                                ? `${pct}% (${r.monthPresent}/${r.monthTotal})`
+                                : "—"}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

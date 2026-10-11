@@ -4,7 +4,7 @@ import type { Prisma } from "@prisma/client";
 import type { AttendanceStatus } from "@prisma/client";
 import type { Session } from "next-auth";
 
-import { requireSchool } from "@/server/auth/dal";
+import { requireSchool, withCurrentTenant } from "@/server/auth/dal";
 import { withTenant } from "@/server/db/tenant";
 import { dispatch } from "@/server/notifications/dispatch";
 
@@ -52,6 +52,70 @@ export async function listMarkableClasses() {
       },
     }),
   );
+}
+
+export type ClassAttendanceRow = {
+  studentId: string;
+  name: string;
+  rollNumber: string | null;
+  todayStatus: AttendanceStatus | null;
+  monthPresent: number;
+  monthTotal: number;
+};
+
+/**
+ * Read-only class attendance overview (HEAD): for each active student, today's
+ * status and this month's present/total marked days (for the progress bar).
+ * The month runs from the 1st to today (UTC). Does not mark anything.
+ */
+export async function getClassAttendanceOverview(classId: string) {
+  return withCurrentTenant(async (tx) => {
+    const cls = await tx.class.findUnique({
+      where: { id: classId },
+      select: { id: true, name: true },
+    });
+    if (!cls) throw new Error("Class not found");
+
+    const now = new Date();
+    const today = toDateOnly(now);
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+
+    const students = await tx.student.findMany({
+      where: { classId, isActive: true },
+      orderBy: [{ rollNumber: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, rollNumber: true },
+    });
+
+    const monthRecords = await tx.attendance.findMany({
+      where: { classId, date: { gte: monthStart, lte: today } },
+      select: { studentId: true, status: true, date: true },
+    });
+
+    const todayKey = today.getTime();
+    const todayByStudent = new Map<string, AttendanceStatus>();
+    const monthByStudent = new Map<string, { present: number; total: number }>();
+    for (const r of monthRecords) {
+      const agg = monthByStudent.get(r.studentId) ?? { present: 0, total: 0 };
+      agg.total += 1;
+      if (r.status === "PRESENT" || r.status === "LATE") agg.present += 1;
+      monthByStudent.set(r.studentId, agg);
+      if (r.date.getTime() === todayKey) todayByStudent.set(r.studentId, r.status);
+    }
+
+    const rows: ClassAttendanceRow[] = students.map((s) => {
+      const m = monthByStudent.get(s.id) ?? { present: 0, total: 0 };
+      return {
+        studentId: s.id,
+        name: s.name,
+        rollNumber: s.rollNumber,
+        todayStatus: todayByStudent.get(s.id) ?? null,
+        monthPresent: m.present,
+        monthTotal: m.total,
+      };
+    });
+
+    return { class: cls, rows };
+  });
 }
 
 export type AttendanceEntry = {
