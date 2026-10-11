@@ -54,6 +54,7 @@ model School {
   examSubjects           ExamSubject[]
   examResults            ExamResult[]
   redFlags               RedFlag[]
+  timetableEntries       TimetableEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -98,6 +99,7 @@ model User {
   teacherAssignments TeacherAssignment[]
   classesLed         Class[]             @relation("ClassTeacher")
   sectionsLed        Section[]           @relation("SectionTeacher")
+  timetable          TimetableEntry[]
   parentLinks        ParentStudent[]
   attendanceMarked   Attendance[]
   notifications      Notification[]
@@ -145,6 +147,7 @@ model Class {
   feeStructures      FeeStructure[]
   invoices           Invoice[]
   exams              Exam[]
+  timetableEntries   TimetableEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -282,6 +285,7 @@ model Subject {
   teacherAssignments TeacherAssignment[]
   diaryEntries       DiaryEntry[]
   examSubjects       ExamSubject[]
+  timetableEntries   TimetableEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -314,6 +318,44 @@ model TeacherAssignment {
   @@index([schoolId])
   @@index([teacherId])
   @@map("teacher_assignments")
+}
+
+/// One slot in a teacher's weekly timetable: on a given `day`, `period` number,
+/// the teacher takes `subject` with `class`. Composite FKs keep teacher, subject
+/// and class in the same school (RLS-safe). `@@unique([teacherId, day, period])`
+/// stops a teacher being double-booked in the same slot. Tenant-scoped via RLS.
+model TimetableEntry {
+  id        String  @id @default(cuid())
+  schoolId  String
+  school    School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacherId String
+  teacher   User    @relation(fields: [schoolId, teacherId], references: [schoolId, id], onDelete: Cascade)
+  subjectId String
+  subject   Subject @relation(fields: [schoolId, subjectId], references: [schoolId, id], onDelete: Cascade)
+  classId   String
+  class     Class   @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
+  day       Weekday
+  period    Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teacherId, day, period])
+  @@index([schoolId])
+  @@index([teacherId])
+  @@map("timetable_entries")
+}
+
+/// Days of the teaching week (Mon-Sat). Enum order is the sort order.
+enum Weekday {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+
+  @@map("weekday")
 }
 
 /// A daily attendance record: one row per student per calendar day (Module 3.1).

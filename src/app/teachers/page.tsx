@@ -1,8 +1,11 @@
 import { Suspense } from "react";
+import Link from "next/link";
+import { CalendarClock } from "lucide-react";
 import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { addBoxClass } from "@/components/ui/add-box";
 import { CreateTeacherForm } from "@/components/academics/create-teacher-form";
@@ -65,23 +68,49 @@ async function TeachersContent() {
                   <DeleteButton action={deleteTeacherAction} id={teacher.id} label={teacher.name} />
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  {teacher.teacherAssignments.length === 0 ? (
-                    <span className="text-muted-foreground text-sm">No assignments.</span>
-                  ) : (
-                    teacher.teacherAssignments.map((a) => (
-                      <Badge key={a.id} variant="secondary" className="gap-1 pr-1">
-                        {a.subject.name} - {a.class.name}
-                        <DeleteButton
-                          action={deleteAssignmentAction}
-                          id={a.id}
-                          label={`${a.subject.name} in ${a.class.name}`}
-                        />
-                      </Badge>
-                    ))
-                  )}
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <p className="text-muted-foreground text-xs font-medium">Subjects taught</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {teacher.teacherAssignments.length === 0 ? (
+                      <span className="text-muted-foreground text-sm">No assignments.</span>
+                    ) : (
+                      teacher.teacherAssignments.map((a) => (
+                        <Badge key={a.id} variant="secondary" className="gap-1 pr-1">
+                          {a.subject.name} - {a.class.name}
+                          <DeleteButton
+                            action={deleteAssignmentAction}
+                            id={a.id}
+                            label={`${a.subject.name} in ${a.class.name}`}
+                          />
+                        </Badge>
+                      ))
+                    )}
+                  </div>
                 </div>
+
+                <div className="space-y-1.5">
+                  <p className="text-muted-foreground text-xs font-medium">Main teacher of</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {teacher.classesLed.length === 0 ? (
+                      <span className="text-muted-foreground text-sm">No classes.</span>
+                    ) : (
+                      teacher.classesLed.map((c) => (
+                        <Badge key={c.id} variant="outline">
+                          {c.name}
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/teachers/${teacher.id}`}>
+                    <CalendarClock className="size-4" />
+                    Timetable
+                  </Link>
+                </Button>
+
                 <AssignTeacherForm
                   teacherId={teacher.id}
                   subjects={subjectOptions}

@@ -10,6 +10,8 @@ import {
   deleteTeacher,
   createAssignment,
   deleteAssignment,
+  addTimetableEntry,
+  deleteTimetableEntry,
 } from "@/server/academics/teachers";
 import type { FormState } from "@/app/teachers/form-state";
 
@@ -101,6 +103,62 @@ export async function createAssignmentAction(
       return { status: "error", message: "That assignment already exists." };
     }
     throw error;
+  }
+}
+
+const timetableSchema = z.object({
+  teacherId: z.string().min(1),
+  classId: z.string().min(1, "Pick a class"),
+  subjectId: z.string().min(1, "Pick a subject"),
+  day: z.enum(["MON", "TUE", "WED", "THU", "FRI", "SAT"]),
+  period: z.coerce.number().int().min(1, "Period must be 1 or more").max(20),
+});
+
+export async function addTimetableEntryAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  await requireRole("HEAD");
+
+  const parsed = timetableSchema.safeParse({
+    teacherId: formData.get("teacherId"),
+    classId: formData.get("classId"),
+    subjectId: formData.get("subjectId"),
+    day: formData.get("day"),
+    period: formData.get("period"),
+  });
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Please fix the errors.",
+      fieldErrors: toFieldErrors(parsed.error),
+    };
+  }
+
+  try {
+    await addTimetableEntry(parsed.data);
+    refresh();
+    return { status: "success", message: "Timetable entry added." };
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return {
+        status: "error",
+        message: "This teacher already has a class in that day and period.",
+      };
+    }
+    if (error instanceof Error) {
+      return { status: "error", message: error.message };
+    }
+    throw error;
+  }
+}
+
+export async function deleteTimetableEntryAction(formData: FormData): Promise<void> {
+  await requireRole("HEAD");
+  const id = String(formData.get("id") ?? "");
+  if (id) {
+    await deleteTimetableEntry(id);
+    refresh();
   }
 }
 

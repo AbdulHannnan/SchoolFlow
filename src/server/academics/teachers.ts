@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { Weekday } from "@prisma/client";
+
 import { requireSchool, withCurrentTenant } from "@/server/auth/dal";
 import { withTenant } from "@/server/db/tenant";
 import { hashPassword } from "@/server/auth/password";
@@ -28,9 +30,79 @@ export function listTeachers() {
           },
           orderBy: { createdAt: "asc" },
         },
+        // Classes this teacher is the main (class) teacher of.
+        classesLed: {
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        },
       },
     }),
   );
+}
+
+/** A teacher's weekly timetable: the teacher (name/email) and their slots
+ * ordered by day then period, each with subject and class names. */
+export async function getTeacherTimetable(teacherId: string) {
+  return withCurrentTenant(async (tx) => {
+    const teacher = await tx.user.findFirst({
+      where: { id: teacherId, role: "TEACHER" },
+      select: { id: true, name: true, email: true },
+    });
+    if (!teacher) throw new Error("Teacher not found");
+    const entries = await tx.timetableEntry.findMany({
+      where: { teacherId },
+      orderBy: [{ day: "asc" }, { period: "asc" }],
+      select: {
+        id: true,
+        day: true,
+        period: true,
+        subject: { select: { name: true } },
+        class: { select: { name: true } },
+      },
+    });
+    return { teacher, entries };
+  });
+}
+
+export async function addTimetableEntry(input: {
+  teacherId: string;
+  classId: string;
+  subjectId: string;
+  day: Weekday;
+  period: number;
+}) {
+  const { schoolId } = await requireSchool();
+  return withTenant(schoolId, async (tx) => {
+    // RLS doesn't guard FK targets - re-check all three resolve in-tenant.
+    const teacher = await tx.user.findFirst({
+      where: { id: input.teacherId, role: "TEACHER" },
+      select: { id: true },
+    });
+    if (!teacher) throw new Error("Teacher not found");
+    const subject = await tx.subject.findUnique({
+      where: { id: input.subjectId },
+      select: { id: true },
+    });
+    if (!subject) throw new Error("Subject not found");
+    const cls = await tx.class.findUnique({ where: { id: input.classId }, select: { id: true } });
+    if (!cls) throw new Error("Class not found");
+
+    return tx.timetableEntry.create({
+      data: {
+        schoolId,
+        teacherId: input.teacherId,
+        subjectId: input.subjectId,
+        classId: input.classId,
+        day: input.day,
+        period: input.period,
+      },
+    });
+  });
+}
+
+export async function deleteTimetableEntry(id: string) {
+  const { schoolId } = await requireSchool();
+  return withTenant(schoolId, (tx) => tx.timetableEntry.deleteMany({ where: { id } }));
 }
 
 export async function createTeacher(input: { name: string; email: string; password: string }) {
