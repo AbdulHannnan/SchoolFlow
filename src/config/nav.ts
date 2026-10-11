@@ -20,28 +20,32 @@ export type NavItem = {
   title: string;
   href: string;
   icon: LucideIcon;
-  /** Roadmap module that delivers this area; the route is a placeholder until then. */
+  /** One-line summary shown on the dashboard tile. */
+  description: string;
+  /** Roadmap module that delivers this area. */
   module: string;
+  /** Whether the route is live. A not-ready item renders but doesn't link. */
+  ready: boolean;
 };
 
 /**
- * Primary sidebar navigation. Entries mirror the product roadmap - most routes
- * are placeholders that get real pages as their module lands. Keep this list as
- * the single source of truth for the shell's navigation.
+ * Primary navigation - the single source of truth for both the sidebar and the
+ * dashboard tiles. Every `ready` entry has a real route; a not-ready entry is
+ * shown as "coming soon" and is never turned into a link.
  */
 export const navItems: NavItem[] = [
-  { title: "Dashboard", href: "/", icon: LayoutDashboard, module: "9.1" },
-  { title: "Classes", href: "/classes", icon: Layers, module: "2.1" },
-  { title: "Subjects", href: "/subjects", icon: BookOpen, module: "2.2" },
-  { title: "Students", href: "/students", icon: GraduationCap, module: "2.4" },
-  { title: "Teachers", href: "/teachers", icon: Users, module: "2.3" },
-  { title: "Parents", href: "/parents", icon: Contact, module: "2.5" },
-  { title: "Attendance", href: "/attendance", icon: CalendarCheck, module: "3" },
-  { title: "Homework", href: "/homework", icon: NotebookPen, module: "5" },
-  { title: "Exams", href: "/exams", icon: ClipboardList, module: "7" },
-  { title: "Progress", href: "/progress", icon: TrendingUp, module: "7.4" },
-  { title: "Red Flags", href: "/red-flags", icon: TriangleAlert, module: "7.3" },
-  { title: "Fees", href: "/fees", icon: Wallet, module: "6" },
-  { title: "Notifications", href: "/notifications", icon: Bell, module: "4" },
-  { title: "Settings", href: "/settings", icon: Settings, module: "1.6" },
+  { title: "Dashboard", href: "/", icon: LayoutDashboard, description: "Overview and quick links", module: "9.1", ready: true }, // prettier-ignore
+  { title: "Classes", href: "/classes", icon: Layers, description: "Grades and their sections", module: "2.1", ready: true }, // prettier-ignore
+  { title: "Subjects", href: "/subjects", icon: BookOpen, description: "Subjects taught at the school", module: "2.2", ready: true }, // prettier-ignore
+  { title: "Students", href: "/students", icon: GraduationCap, description: "Enrol and manage students", module: "2.4", ready: true }, // prettier-ignore
+  { title: "Teachers", href: "/teachers", icon: Users, description: "Staff and class assignments", module: "2.3", ready: true }, // prettier-ignore
+  { title: "Parents", href: "/parents", icon: Contact, description: "Guardians and student links", module: "2.5", ready: true }, // prettier-ignore
+  { title: "Attendance", href: "/attendance", icon: CalendarCheck, description: "Mark and review attendance", module: "3", ready: true }, // prettier-ignore
+  { title: "Homework", href: "/homework", icon: NotebookPen, description: "Daily diary and homework", module: "5", ready: true }, // prettier-ignore
+  { title: "Exams", href: "/exams", icon: ClipboardList, description: "Exams, grades and report cards", module: "7", ready: true }, // prettier-ignore
+  { title: "Progress", href: "/progress", icon: TrendingUp, description: "Student progress dashboards", module: "7.4", ready: true }, // prettier-ignore
+  { title: "Red Flags", href: "/red-flags", icon: TriangleAlert, description: "At-risk alerts and rules", module: "7.3", ready: true }, // prettier-ignore
+  { title: "Fees", href: "/fees", icon: Wallet, description: "Invoices, payments and reminders", module: "6", ready: true }, // prettier-ignore
+  { title: "Notifications", href: "/notifications", icon: Bell, description: "Alerts and messages", module: "4", ready: true }, // prettier-ignore
+  { title: "Settings", href: "/settings", icon: Settings, description: "School profile and preferences", module: "1.6", ready: false }, // prettier-ignore
 ];

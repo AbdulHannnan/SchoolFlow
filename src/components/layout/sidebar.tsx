@@ -25,6 +25,20 @@ export function Sidebar() {
         {navItems.map((item) => {
           const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
 
+          if (!item.ready) {
+            return (
+              <span
+                key={item.href}
+                aria-disabled="true"
+                title="Coming soon"
+                className="text-sidebar-foreground/40 flex cursor-not-allowed items-center gap-3 rounded-md px-3 py-2 text-sm font-medium"
+              >
+                <item.icon className="size-4" />
+                {item.title}
+              </span>
+            );
+          }
+
           return (
             <Link
               key={item.href}

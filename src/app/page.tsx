@@ -28,7 +28,7 @@ async function DashboardContent() {
         <div>
           <h2 className="text-lg font-semibold">Welcome, {user.name}</h2>
           <p className="text-muted-foreground text-sm">
-            Module 1 complete - multi-tenant auth, RBAC, RLS isolation, and tenant onboarding.
+            Jump to any area below, or use the sidebar to navigate.
           </p>
         </div>
         {hasRole(user, "SUPER_ADMIN") ? (
@@ -44,17 +44,35 @@ async function DashboardContent() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {navItems
           .filter((item) => item.href !== "/")
-          .map((item) => (
-            <Card key={item.href}>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <item.icon className="text-muted-foreground size-5" />
-                  <CardTitle>{item.title}</CardTitle>
-                </div>
-                <CardDescription>Arrives in module {item.module}.</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
+          .map((item) =>
+            item.ready ? (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="focus-visible:ring-ring rounded-xl focus-visible:ring-2 focus-visible:outline-none"
+              >
+                <Card className="hover:border-primary/50 hover:bg-accent/40 h-full transition-colors">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <item.icon className="text-muted-foreground size-5" />
+                      <CardTitle>{item.title}</CardTitle>
+                    </div>
+                    <CardDescription>{item.description}</CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
+            ) : (
+              <Card key={item.href} className="h-full opacity-60">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <item.icon className="text-muted-foreground size-5" />
+                    <CardTitle>{item.title}</CardTitle>
+                  </div>
+                  <CardDescription>{item.description} - coming soon.</CardDescription>
+                </CardHeader>
+              </Card>
+            ),
+          )}
       </div>
     </div>
   );
