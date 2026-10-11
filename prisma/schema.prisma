@@ -97,6 +97,7 @@ model User {
 
   teacherAssignments TeacherAssignment[]
   classesLed         Class[]             @relation("ClassTeacher")
+  sectionsLed        Section[]           @relation("SectionTeacher")
   parentLinks        ParentStudent[]
   attendanceMarked   Attendance[]
   notifications      Notification[]
@@ -132,6 +133,9 @@ model Class {
   /// the service (the teacher must resolve in-tenant with role TEACHER).
   classTeacherId String?
   classTeacher   User?   @relation("ClassTeacher", fields: [classTeacherId], references: [id], onDelete: SetNull)
+  /// Whether this class is divided into sections. Chosen at creation; it's only
+  /// the default/intent - sections can still be added to any class later.
+  hasSections    Boolean @default(true)
 
   sections           Section[]
   teacherAssignments TeacherAssignment[]
@@ -162,6 +166,12 @@ model Section {
   // Composite FK: the parent class must belong to the same school.
   class    Class  @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
   name     String
+  /// The section's teacher (section in-charge), distinct from the class's main
+  /// teacher. Optional. A single-column SetNull FK like `Class.classTeacher`:
+  /// composite SetNull would force `schoolId` NULL, so tenant-safety is re-
+  /// checked in the service (the teacher must resolve in-tenant with role TEACHER).
+  sectionTeacherId String?
+  sectionTeacher   User?   @relation("SectionTeacher", fields: [sectionTeacherId], references: [id], onDelete: SetNull)
 
   students     Student[]
   attendance   Attendance[]
@@ -174,6 +184,7 @@ model Section {
   @@unique([schoolId, id])
   @@index([schoolId])
   @@index([classId])
+  @@index([sectionTeacherId])
   @@map("sections")
 }
 

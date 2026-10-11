@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { Prisma } from "@prisma/client";
+
 import { requireSchool, withCurrentTenant } from "@/server/auth/dal";
 import { withTenant } from "@/server/db/tenant";
 
@@ -14,7 +16,13 @@ export function listClassesWithSections() {
     tx.class.findMany({
       orderBy: [{ level: "asc" }, { name: "asc" }],
       include: {
-        sections: { orderBy: { name: "asc" } },
+        sections: {
+          orderBy: { name: "asc" },
+          include: {
+            sectionTeacher: { select: { id: true, name: true } },
+            _count: { select: { students: true } },
+          },
+        },
         classTeacher: { select: { id: true, name: true } },
         _count: { select: { students: true } },
       },
@@ -37,6 +45,7 @@ export async function createClass(input: {
   name: string;
   level: number | null;
   classTeacherId: string | null;
+  hasSections: boolean;
 }) {
   const { schoolId } = await requireSchool();
   return withTenant(schoolId, async (tx) => {
@@ -55,6 +64,7 @@ export async function createClass(input: {
         name: input.name,
         level: input.level,
         classTeacherId: input.classTeacherId,
+        hasSections: input.hasSections,
       },
     });
   });
@@ -87,7 +97,25 @@ export async function updateClass(input: {
   });
 }
 
-export async function createSection(input: { classId: string; name: string }) {
+/** Re-check a section teacher resolves in-tenant with role TEACHER (RLS doesn't
+ * guard FK targets). No-op for a null id. */
+async function assertSectionTeacher(
+  tx: Prisma.TransactionClient,
+  sectionTeacherId: string | null,
+): Promise<void> {
+  if (!sectionTeacherId) return;
+  const teacher = await tx.user.findFirst({
+    where: { id: sectionTeacherId, role: "TEACHER" },
+    select: { id: true },
+  });
+  if (!teacher) throw new Error("Selected section teacher was not found");
+}
+
+export async function createSection(input: {
+  classId: string;
+  name: string;
+  sectionTeacherId: string | null;
+}) {
   const { schoolId } = await requireSchool();
   return withTenant(schoolId, async (tx) => {
     // Within the tenant context this returns the class only if it belongs to
@@ -96,8 +124,34 @@ export async function createSection(input: { classId: string; name: string }) {
     if (!parent) {
       throw new Error("Class not found");
     }
+    await assertSectionTeacher(tx, input.sectionTeacherId);
     return tx.section.create({
-      data: { schoolId, classId: input.classId, name: input.name },
+      data: {
+        schoolId,
+        classId: input.classId,
+        name: input.name,
+        sectionTeacherId: input.sectionTeacherId,
+      },
+    });
+  });
+}
+
+export async function updateSection(input: {
+  id: string;
+  name: string;
+  sectionTeacherId: string | null;
+}) {
+  const { schoolId } = await requireSchool();
+  return withTenant(schoolId, async (tx) => {
+    const existing = await tx.section.findUnique({
+      where: { id: input.id },
+      select: { id: true },
+    });
+    if (!existing) throw new Error("Section not found");
+    await assertSectionTeacher(tx, input.sectionTeacherId);
+    return tx.section.update({
+      where: { id: input.id },
+      data: { name: input.name, sectionTeacherId: input.sectionTeacherId },
     });
   });
 }

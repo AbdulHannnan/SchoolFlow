@@ -54,6 +54,15 @@ export function CreateClassForm({ teachers }: { teachers: TeacherOption[] }) {
           ))}
         </select>
       </div>
+      <label htmlFor="class-has-sections" className="flex items-center gap-2 pb-2 text-sm">
+        <input
+          id="class-has-sections"
+          type="checkbox"
+          name="hasSections"
+          className="size-4 rounded border-neutral-600 accent-white"
+        />
+        This class has sections
+      </label>
       <Button type="submit" disabled={pending}>
         {pending ? "Adding..." : "Add class"}
       </Button>

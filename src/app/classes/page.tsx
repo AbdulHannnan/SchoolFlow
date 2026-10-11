@@ -2,14 +2,12 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { addBoxClass } from "@/components/ui/add-box";
 import { CreateClassForm } from "@/components/academics/create-class-form";
 import { AddSectionForm } from "@/components/academics/add-section-form";
-import { DeleteButton } from "@/components/academics/delete-button";
 import { ClassActions } from "@/components/academics/class-actions";
-import { deleteSectionAction } from "@/app/classes/actions";
+import { SectionActions } from "@/components/academics/section-actions";
 import { requireRole } from "@/server/auth/dal";
 import { listClassesWithSections, listTeacherOptions } from "@/server/academics/classes";
 import { User as UserIcon, GraduationCap } from "lucide-react";
@@ -85,23 +83,45 @@ async function ClassesContent() {
                     {cls._count.students === 1 ? "student" : "students"}
                   </span>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {cls.sections.length === 0 ? (
-                    <span className="text-muted-foreground text-sm">No sections.</span>
-                  ) : (
-                    cls.sections.map((section) => (
-                      <Badge key={section.id} variant="secondary" className="gap-1 pr-1">
-                        {section.name}
-                        <DeleteButton
-                          action={deleteSectionAction}
-                          id={section.id}
-                          label={`section ${section.name}`}
-                        />
-                      </Badge>
-                    ))
-                  )}
-                </div>
-                <AddSectionForm classId={cls.id} />
+                {cls.sections.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    {cls.hasSections
+                      ? "No sections yet. Add the first one below."
+                      : "No sections - students enrol directly into the class."}
+                  </p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {cls.sections.map((section) => (
+                      <div key={section.id} className="bg-muted/30 rounded-lg border p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-medium">{section.name}</p>
+                          <SectionActions
+                            id={section.id}
+                            name={section.name}
+                            sectionTeacherId={section.sectionTeacherId}
+                            teachers={teachers}
+                          />
+                        </div>
+                        <div className="text-muted-foreground mt-1 space-y-1 text-sm">
+                          <span className="flex items-center gap-1.5">
+                            <UserIcon className="size-4" />
+                            {section.sectionTeacher ? (
+                              <span className="text-foreground">{section.sectionTeacher.name}</span>
+                            ) : (
+                              "No teacher"
+                            )}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <GraduationCap className="size-4" />
+                            <span className="text-foreground">{section._count.students}</span>
+                            {section._count.students === 1 ? "student" : "students"}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <AddSectionForm classId={cls.id} teachers={teachers} />
               </CardContent>
             </Card>
           ))}

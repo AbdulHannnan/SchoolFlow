@@ -11,6 +11,7 @@ import {
   deleteClass,
   deleteSection,
   updateClass,
+  updateSection,
 } from "@/server/academics/classes";
 import type { FormState } from "@/app/classes/form-state";
 
@@ -29,9 +30,21 @@ const updateClassSchema = classSchema.extend({
   id: z.string().min(1, "Missing class"),
 });
 
+const sectionTeacherField = z
+  .string()
+  .trim()
+  .transform((v) => (v === "" ? null : v));
+
 const sectionSchema = z.object({
   classId: z.string().min(1),
   name: z.string().trim().min(1, "Name is required").max(30),
+  sectionTeacherId: sectionTeacherField,
+});
+
+const updateSectionSchema = z.object({
+  id: z.string().min(1, "Missing section"),
+  name: z.string().trim().min(1, "Name is required").max(30),
+  sectionTeacherId: sectionTeacherField,
 });
 
 function fieldErrors(error: z.ZodError): Record<string, string> {
@@ -59,8 +72,10 @@ export async function createClassAction(_prev: FormState, formData: FormData): P
     };
   }
 
+  const hasSections = formData.get("hasSections") === "on";
+
   try {
-    await createClass(parsed.data);
+    await createClass({ ...parsed.data, hasSections });
     refresh();
     return { status: "success", message: "Class added." };
   } catch (error) {
@@ -123,6 +138,7 @@ export async function createSectionAction(
   const parsed = sectionSchema.safeParse({
     classId: formData.get("classId"),
     name: formData.get("name"),
+    sectionTeacherId: formData.get("sectionTeacherId") ?? "",
   });
   if (!parsed.success) {
     return {
@@ -143,6 +159,47 @@ export async function createSectionAction(
         message: "That section already exists.",
         fieldErrors: { name: "Already exists" },
       };
+    }
+    if (error instanceof Error) {
+      return { status: "error", message: error.message };
+    }
+    throw error;
+  }
+}
+
+export async function updateSectionAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  await requireRole("HEAD");
+
+  const parsed = updateSectionSchema.safeParse({
+    id: formData.get("id"),
+    name: formData.get("name"),
+    sectionTeacherId: formData.get("sectionTeacherId") ?? "",
+  });
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Please fix the errors.",
+      fieldErrors: fieldErrors(parsed.error),
+    };
+  }
+
+  try {
+    await updateSection(parsed.data);
+    refresh();
+    return { status: "success", message: "Section updated." };
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return {
+        status: "error",
+        message: "Another section already has that name.",
+        fieldErrors: { name: "Already exists" },
+      };
+    }
+    if (error instanceof Error) {
+      return { status: "error", message: error.message };
     }
     throw error;
   }
