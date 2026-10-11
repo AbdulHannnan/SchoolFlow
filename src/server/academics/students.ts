@@ -24,6 +24,31 @@ export function listStudents() {
   );
 }
 
+/** One class's roster: the class (id + name) and its students, for the
+ * drill-down on the Students page. Tenant-scoped; a foreign id resolves to
+ * nothing under RLS, so it throws "Class not found". */
+export async function listStudentsByClass(classId: string) {
+  return withCurrentTenant(async (tx) => {
+    const cls = await tx.class.findUnique({
+      where: { id: classId },
+      select: { id: true, name: true },
+    });
+    if (!cls) throw new Error("Class not found");
+    const students = await tx.student.findMany({
+      where: { classId },
+      orderBy: [{ rollNumber: "asc" }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        rollNumber: true,
+        isActive: true,
+        section: { select: { id: true, name: true } },
+      },
+    });
+    return { class: cls, students };
+  });
+}
+
 export async function createStudent(input: {
   name: string;
   rollNumber: string | null;

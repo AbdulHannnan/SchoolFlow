@@ -1,7 +1,6 @@
 import {
   LayoutDashboard,
   Layers,
-  BookOpen,
   GraduationCap,
   Users,
   Contact,
@@ -36,7 +35,6 @@ export type NavItem = {
 export const navItems: NavItem[] = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard, description: "Overview and quick links", module: "9.1", ready: true }, // prettier-ignore
   { title: "Classes", href: "/classes", icon: Layers, description: "Grades and their sections", module: "2.1", ready: true }, // prettier-ignore
-  { title: "Subjects", href: "/subjects", icon: BookOpen, description: "Subjects taught at the school", module: "2.2", ready: true }, // prettier-ignore
   { title: "Students", href: "/students", icon: GraduationCap, description: "Enrol and manage students", module: "2.4", ready: true }, // prettier-ignore
   { title: "Teachers", href: "/teachers", icon: Users, description: "Staff and class assignments", module: "2.3", ready: true }, // prettier-ignore
   { title: "Parents", href: "/parents", icon: Contact, description: "Guardians and student links", module: "2.5", ready: true }, // prettier-ignore
