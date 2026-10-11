@@ -60,6 +60,33 @@ export async function createClass(input: {
   });
 }
 
+export async function updateClass(input: {
+  id: string;
+  name: string;
+  level: number | null;
+  classTeacherId: string | null;
+}) {
+  const { schoolId } = await requireSchool();
+  return withTenant(schoolId, async (tx) => {
+    // RLS hides other tenants' rows, so a foreign id resolves to nothing here.
+    const existing = await tx.class.findUnique({ where: { id: input.id }, select: { id: true } });
+    if (!existing) throw new Error("Class not found");
+    // Re-check the teacher resolves in-tenant with role TEACHER (RLS doesn't
+    // guard FK targets), as createClass does.
+    if (input.classTeacherId) {
+      const teacher = await tx.user.findFirst({
+        where: { id: input.classTeacherId, role: "TEACHER" },
+        select: { id: true },
+      });
+      if (!teacher) throw new Error("Selected class teacher was not found");
+    }
+    return tx.class.update({
+      where: { id: input.id },
+      data: { name: input.name, level: input.level, classTeacherId: input.classTeacherId },
+    });
+  });
+}
+
 export async function createSection(input: { classId: string; name: string }) {
   const { schoolId } = await requireSchool();
   return withTenant(schoolId, async (tx) => {

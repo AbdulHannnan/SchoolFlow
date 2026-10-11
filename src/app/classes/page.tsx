@@ -8,7 +8,8 @@ import { addBoxClass } from "@/components/ui/add-box";
 import { CreateClassForm } from "@/components/academics/create-class-form";
 import { AddSectionForm } from "@/components/academics/add-section-form";
 import { DeleteButton } from "@/components/academics/delete-button";
-import { deleteClassAction, deleteSectionAction } from "@/app/classes/actions";
+import { ClassActions } from "@/components/academics/class-actions";
+import { deleteSectionAction } from "@/app/classes/actions";
 import { requireRole } from "@/server/auth/dal";
 import { listClassesWithSections, listTeacherOptions } from "@/server/academics/classes";
 import { User as UserIcon, GraduationCap } from "lucide-react";
@@ -58,7 +59,14 @@ async function ClassesContent() {
                       </span>
                     ) : null}
                   </CardTitle>
-                  <DeleteButton action={deleteClassAction} id={cls.id} label={cls.name} />
+                  <ClassActions
+                    id={cls.id}
+                    name={cls.name}
+                    level={cls.level}
+                    classTeacherId={cls.classTeacherId}
+                    studentCount={cls._count.students}
+                    teachers={teachers}
+                  />
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">

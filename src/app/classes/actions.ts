@@ -5,7 +5,13 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { requireRole } from "@/server/auth/dal";
-import { createClass, createSection, deleteClass, deleteSection } from "@/server/academics/classes";
+import {
+  createClass,
+  createSection,
+  deleteClass,
+  deleteSection,
+  updateClass,
+} from "@/server/academics/classes";
 import type { FormState } from "@/app/classes/form-state";
 
 const classSchema = z.object({
@@ -17,6 +23,10 @@ const classSchema = z.object({
     .string()
     .trim()
     .transform((v) => (v === "" ? null : v)),
+});
+
+const updateClassSchema = classSchema.extend({
+  id: z.string().min(1, "Missing class"),
 });
 
 const sectionSchema = z.object({
@@ -58,6 +68,42 @@ export async function createClassAction(_prev: FormState, formData: FormData): P
       return {
         status: "error",
         message: "That class already exists.",
+        fieldErrors: { name: "Already exists" },
+      };
+    }
+    if (error instanceof Error) {
+      return { status: "error", message: error.message };
+    }
+    throw error;
+  }
+}
+
+export async function updateClassAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  await requireRole("HEAD");
+
+  const parsed = updateClassSchema.safeParse({
+    id: formData.get("id"),
+    name: formData.get("name"),
+    level: formData.get("level") ?? "",
+    classTeacherId: formData.get("classTeacherId") ?? "",
+  });
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Please fix the errors.",
+      fieldErrors: fieldErrors(parsed.error),
+    };
+  }
+
+  try {
+    await updateClass(parsed.data);
+    refresh();
+    return { status: "success", message: "Class updated." };
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return {
+        status: "error",
+        message: "Another class already has that name.",
         fieldErrors: { name: "Already exists" },
       };
     }
