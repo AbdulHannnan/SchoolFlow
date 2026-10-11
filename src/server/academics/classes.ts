@@ -51,6 +51,30 @@ export function listTeacherOptions() {
   );
 }
 
+/** One class's subject assignments (subject + teacher) for the Subjects
+ * drill-down. Tenant-scoped; a foreign id resolves to nothing under RLS. */
+export async function getClassSubjects(classId: string) {
+  return withCurrentTenant(async (tx) => {
+    const cls = await tx.class.findUnique({
+      where: { id: classId },
+      select: { id: true, name: true },
+    });
+    if (!cls) throw new Error("Class not found");
+    const assignments = await tx.teacherAssignment.findMany({
+      where: { classId },
+      orderBy: { subject: { name: "asc" } },
+      select: {
+        id: true,
+        subjectId: true,
+        teacherId: true,
+        subject: { select: { name: true } },
+        teacher: { select: { name: true } },
+      },
+    });
+    return { class: cls, assignments };
+  });
+}
+
 /** Subjects (id + name) for the per-class subject picker. */
 export function listSubjectOptions() {
   return withCurrentTenant((tx) =>

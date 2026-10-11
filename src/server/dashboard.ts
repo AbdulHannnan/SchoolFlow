@@ -30,6 +30,7 @@ export async function getDashboardCounts(): Promise<DashboardCounts> {
     // Counts are cheap; run them sequentially to stay within one interactive
     // transaction (Prisma discourages parallel queries on a tx client).
     const classes = await tx.class.count();
+    const subjects = await tx.subject.count();
     const students = await tx.student.count({ where: { isActive: true } });
     const teachers = await tx.user.count({ where: { role: "TEACHER", isActive: true } });
     const parents = await tx.user.count({ where: { role: "PARENT", isActive: true } });
@@ -46,6 +47,7 @@ export async function getDashboardCounts(): Promise<DashboardCounts> {
 
     return {
       "/classes": plural(classes, "class", "classes"),
+      "/subjects": plural(subjects, "subject", "subjects"),
       "/students": plural(students, "student", "students"),
       "/teachers": plural(teachers, "teacher", "teachers"),
       "/parents": plural(parents, "parent", "parents"),

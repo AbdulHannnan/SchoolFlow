@@ -1,33 +1,53 @@
 import { Suspense } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { addBoxClass } from "@/components/ui/add-box";
 import { CreateSubjectForm } from "@/components/academics/create-subject-form";
 import { DeleteButton } from "@/components/academics/delete-button";
+import { ClassSubjectManager } from "@/components/academics/class-subject-manager";
 import { deleteSubjectAction } from "@/app/subjects/actions";
 import { requireRole } from "@/server/auth/dal";
 import { listSubjects } from "@/server/academics/subjects";
+import {
+  listClassesWithSections,
+  getClassSubjects,
+  listSubjectOptions,
+  listTeacherOptions,
+} from "@/server/academics/classes";
 
 export const metadata: Metadata = {
   title: "Subjects - School Management",
 };
 
-export default function SubjectsPage() {
+type SearchParams = Promise<{ classId?: string }>;
+
+export default function SubjectsPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <AppShell title="Subjects">
       <Suspense fallback={<div className="bg-muted h-64 animate-pulse rounded-xl" />}>
-        <SubjectsContent />
+        <SubjectsContent searchParams={searchParams} />
       </Suspense>
     </AppShell>
   );
 }
 
-async function SubjectsContent() {
+async function SubjectsContent({ searchParams }: { searchParams: SearchParams }) {
   await requireRole("HEAD");
-  const subjects = await listSubjects();
+  const sp = await searchParams;
+
+  if (sp.classId) {
+    return <ClassSubjectsDetail classId={sp.classId} />;
+  }
+  return <SubjectsOverview />;
+}
+
+async function SubjectsOverview() {
+  const [subjects, classes] = await Promise.all([listSubjects(), listClassesWithSections()]);
 
   return (
     <div className="space-y-6">
@@ -40,34 +60,101 @@ async function SubjectsContent() {
         </CardContent>
       </Card>
 
-      {subjects.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No subjects yet. Add your first one above.</p>
-      ) : (
+      {subjects.length > 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">
-              {subjects.length} {subjects.length === 1 ? "subject" : "subjects"}
-            </CardTitle>
+            <CardTitle className="text-base">Subject catalogue</CardTitle>
+            <CardDescription>
+              The subjects this school offers. Assign them per class below.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="divide-border divide-y">
+            <div className="flex flex-wrap items-center gap-2">
               {subjects.map((subject) => (
-                <li key={subject.id} className="flex items-center justify-between gap-2 py-2">
-                  <span className="flex items-center gap-2 text-sm">
-                    {subject.name}
-                    {subject.code ? (
-                      <Badge variant="secondary" className="font-mono">
-                        {subject.code}
-                      </Badge>
-                    ) : null}
-                  </span>
+                <Badge key={subject.id} variant="secondary" className="gap-1 pr-1">
+                  {subject.name}
                   <DeleteButton action={deleteSubjectAction} id={subject.id} label={subject.name} />
-                </li>
+                </Badge>
               ))}
-            </ul>
+            </div>
           </CardContent>
         </Card>
-      )}
+      ) : null}
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium">Classes</h2>
+        {classes.length === 0 ? (
+          <p className="text-muted-foreground text-sm">Add a class first to define its subjects.</p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {classes.map((cls) => {
+              const subjectCount = new Set(cls.teacherAssignments.map((a) => a.subjectId)).size;
+              return (
+                <Link
+                  key={cls.id}
+                  href={`/subjects?classId=${encodeURIComponent(cls.id)}`}
+                  className="focus-visible:ring-ring rounded-xl focus-visible:ring-2 focus-visible:outline-none"
+                >
+                  <Card className="hover:border-primary/50 hover:bg-accent/40 h-full transition-colors">
+                    <CardHeader>
+                      <CardTitle className="text-base">
+                        {cls.name}
+                        {cls.level != null ? (
+                          <span className="text-muted-foreground ml-2 text-sm font-normal">
+                            level {cls.level}
+                          </span>
+                        ) : null}
+                      </CardTitle>
+                      <CardDescription>
+                        {subjectCount} {subjectCount === 1 ? "subject" : "subjects"}
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+async function ClassSubjectsDetail({ classId }: { classId: string }) {
+  const [{ class: cls, assignments }, subjects, teachers] = await Promise.all([
+    getClassSubjects(classId),
+    listSubjectOptions(),
+    listTeacherOptions(),
+  ]);
+
+  return (
+    <div className="space-y-4">
+      <Link
+        href="/subjects"
+        className="text-muted-foreground hover:text-foreground -ml-1 inline-flex items-center gap-1 text-sm"
+      >
+        <ArrowLeft className="size-4" />
+        All classes
+      </Link>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            {cls.name} subjects
+            <span className="text-muted-foreground ml-2 text-sm font-normal">
+              {assignments.length} {assignments.length === 1 ? "subject" : "subjects"}
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ClassSubjectManager
+            classId={cls.id}
+            assignments={assignments}
+            subjects={subjects}
+            teachers={teachers}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }
