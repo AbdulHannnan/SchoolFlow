@@ -56,6 +56,28 @@ export function CreateStudentForm({ classes }: { classes: ClassOption[] }) {
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="student-father">
+          Father name <span className="text-muted-foreground font-normal">(optional)</span>
+        </Label>
+        <Input id="student-father" name="fatherName" aria-invalid={!!errors.fatherName} />
+        {errors.fatherName ? <p className="text-destructive text-xs">{errors.fatherName}</p> : null}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="student-cnic">
+          Father CNIC <span className="text-muted-foreground font-normal">(optional)</span>
+        </Label>
+        <Input
+          id="student-cnic"
+          name="fatherCnic"
+          inputMode="numeric"
+          placeholder="3520212345671"
+          aria-invalid={!!errors.fatherCnic}
+        />
+        {errors.fatherCnic ? <p className="text-destructive text-xs">{errors.fatherCnic}</p> : null}
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="student-class">Class</Label>
         <select
           id="student-class"
@@ -115,6 +137,13 @@ export function CreateStudentForm({ classes }: { classes: ClassOption[] }) {
           Date of birth <span className="text-muted-foreground font-normal">(optional)</span>
         </Label>
         <Input id="student-dob" name="dateOfBirth" type="date" />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="student-admission">
+          Admission date <span className="text-muted-foreground font-normal">(optional)</span>
+        </Label>
+        <Input id="student-admission" name="admissionDate" type="date" />
       </div>
 
       <div className="lg:col-span-3">

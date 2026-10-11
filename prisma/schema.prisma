@@ -202,8 +202,14 @@ model Student {
   section     Section?  @relation(fields: [schoolId, sectionId], references: [schoolId, id], onDelete: NoAction)
   name        String
   rollNumber  String?
+  /// Guardian details. `fatherCnic` is the Pakistani CNIC (13 digits, stored
+  /// normalized without dashes). Both optional.
+  fatherName  String?
+  fatherCnic  String?
   gender      Gender?
-  dateOfBirth DateTime?
+  dateOfBirth DateTime? @db.Date
+  /// When the student was admitted to the school. Optional; a date-only value.
+  admissionDate DateTime? @db.Date
   isActive    Boolean   @default(true)
 
   parentLinks ParentStudent[]

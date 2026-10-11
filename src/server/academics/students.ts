@@ -41,6 +41,11 @@ export async function listStudentsByClass(classId: string) {
         id: true,
         name: true,
         rollNumber: true,
+        fatherName: true,
+        fatherCnic: true,
+        gender: true,
+        dateOfBirth: true,
+        admissionDate: true,
         isActive: true,
         section: { select: { id: true, name: true } },
       },
@@ -52,10 +57,13 @@ export async function listStudentsByClass(classId: string) {
 export async function createStudent(input: {
   name: string;
   rollNumber: string | null;
+  fatherName: string | null;
+  fatherCnic: string | null;
   classId: string;
   sectionId: string | null;
   gender: Gender | null;
   dateOfBirth: Date | null;
+  admissionDate: Date | null;
 }) {
   const { schoolId } = await requireSchool();
   return withTenant(schoolId, async (tx) => {
@@ -75,8 +83,59 @@ export async function createStudent(input: {
         sectionId: input.sectionId,
         name: input.name,
         rollNumber: input.rollNumber,
+        fatherName: input.fatherName,
+        fatherCnic: input.fatherCnic,
         gender: input.gender,
         dateOfBirth: input.dateOfBirth,
+        admissionDate: input.admissionDate,
+      },
+    });
+  });
+}
+
+export async function updateStudent(input: {
+  id: string;
+  name: string;
+  rollNumber: string | null;
+  fatherName: string | null;
+  fatherCnic: string | null;
+  classId: string;
+  sectionId: string | null;
+  gender: Gender | null;
+  dateOfBirth: Date | null;
+  admissionDate: Date | null;
+  isActive: boolean;
+}) {
+  const { schoolId } = await requireSchool();
+  return withTenant(schoolId, async (tx) => {
+    // RLS hides other tenants' rows, so a foreign id resolves to nothing here.
+    const existing = await tx.student.findUnique({
+      where: { id: input.id },
+      select: { id: true },
+    });
+    if (!existing) throw new Error("Student not found");
+    // Class must be in this tenant; section (if any) must belong to it.
+    const cls = await tx.class.findUnique({ where: { id: input.classId } });
+    if (!cls) throw new Error("Class not found");
+    if (input.sectionId) {
+      const section = await tx.section.findUnique({ where: { id: input.sectionId } });
+      if (!section || section.classId !== input.classId) {
+        throw new Error("Section does not belong to the selected class");
+      }
+    }
+    return tx.student.update({
+      where: { id: input.id },
+      data: {
+        classId: input.classId,
+        sectionId: input.sectionId,
+        name: input.name,
+        rollNumber: input.rollNumber,
+        fatherName: input.fatherName,
+        fatherCnic: input.fatherCnic,
+        gender: input.gender,
+        dateOfBirth: input.dateOfBirth,
+        admissionDate: input.admissionDate,
+        isActive: input.isActive,
       },
     });
   });
