@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { addBoxClass } from "@/components/ui/add-box";
 import { CreateFeeCategoryForm } from "@/components/fees/create-fee-category-form";
 import { CreateFeeStructureForm } from "@/components/fees/create-fee-structure-form";
 import { DeleteButton } from "@/components/academics/delete-button";
@@ -81,7 +82,7 @@ async function FeeStructureAdmin() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={addBoxClass}>
         <CardHeader>
           <CardTitle className="text-base">Add a fee</CardTitle>
         </CardHeader>

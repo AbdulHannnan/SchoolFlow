@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { addBoxClass } from "@/components/ui/add-box";
 import { GenerateInvoicesForm, type InvoiceClass } from "@/components/fees/generate-invoices-form";
 import { InvoiceStatusBadge } from "@/components/fees/invoice-status-badge";
 import { SendRemindersButton } from "@/components/fees/send-reminders-button";
@@ -58,7 +59,7 @@ async function InvoicesContent({ searchParams }: { searchParams: SearchParams })
         </Button>
       </div>
 
-      <Card>
+      <Card className={addBoxClass}>
         <CardHeader>
           <CardTitle className="text-base">Generate invoices</CardTitle>
         </CardHeader>

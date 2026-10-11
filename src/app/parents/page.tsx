@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { addBoxClass } from "@/components/ui/add-box";
 import { CreateParentForm } from "@/components/academics/create-parent-form";
 import { LinkStudentForm } from "@/components/academics/link-student-form";
 import { DeleteButton } from "@/components/academics/delete-button";
@@ -42,7 +43,7 @@ async function ParentsContent() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className={addBoxClass}>
         <CardHeader>
           <CardTitle className="text-base">Add a parent</CardTitle>
         </CardHeader>

@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { addBoxClass } from "@/components/ui/add-box";
 import { CreateExamForm } from "@/components/academics/create-exam-form";
 import { verifySession } from "@/server/auth/dal";
 import { listMarkableClasses } from "@/server/academics/attendance";
@@ -48,7 +49,7 @@ async function NewExamContent({ searchParams }: { searchParams: SearchParams }) 
   }
 
   return (
-    <Card>
+    <Card className={addBoxClass}>
       <CardHeader>
         <CardTitle className="text-base">New exam for {selectedClass.name}</CardTitle>
       </CardHeader>

@@ -8,6 +8,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { addBoxClass } from "@/components/ui/add-box";
 import { ScanRedFlagsForm } from "@/components/academics/scan-red-flags-form";
 import { reopenRedFlagAction, resolveRedFlagAction } from "@/app/red-flags/actions";
 import { verifySession } from "@/server/auth/dal";
@@ -56,7 +57,7 @@ async function RedFlagsContent({ searchParams }: { searchParams: SearchParams })
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className={addBoxClass}>
         <CardHeader>
           <CardTitle className="text-base">Run a scan</CardTitle>
         </CardHeader>

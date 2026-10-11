@@ -6,6 +6,7 @@ import type { DiaryType } from "@prisma/client";
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { addBoxClass } from "@/components/ui/add-box";
 import { DiaryClassPicker, type PostableClass } from "@/components/academics/diary-class-picker";
 import { PostDiaryForm } from "@/components/academics/post-diary-form";
 import { DeleteButton } from "@/components/academics/delete-button";
@@ -87,7 +88,7 @@ async function HomeworkContent({ searchParams }: { searchParams: SearchParams })
         </p>
       ) : (
         <>
-          <Card>
+          <Card className={addBoxClass}>
             <CardHeader>
               <CardTitle className="text-base">
                 Post to {selectedClass.name}

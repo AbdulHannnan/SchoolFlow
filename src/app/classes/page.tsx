@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { addBoxClass } from "@/components/ui/add-box";
 import { CreateClassForm } from "@/components/academics/create-class-form";
 import { AddSectionForm } from "@/components/academics/add-section-form";
 import { DeleteButton } from "@/components/academics/delete-button";
@@ -31,7 +32,7 @@ async function ClassesContent() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className={addBoxClass}>
         <CardHeader>
           <CardTitle className="text-base">Add a class</CardTitle>
         </CardHeader>

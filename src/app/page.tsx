@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { navItems } from "@/config/nav";
 import { hasRole, verifySession } from "@/server/auth/dal";
+import { getDashboardCounts } from "@/server/dashboard";
 
 export default function Home() {
   return (
@@ -21,6 +22,9 @@ export default function Home() {
 async function DashboardContent() {
   // Gates the page: signed-out visitors are redirected to /login.
   const user = await verifySession();
+
+  // Live per-area counts for tenant users; SUPER_ADMIN has no school, so skip.
+  const counts = user.schoolId ? await getDashboardCounts() : {};
 
   return (
     <div className="space-y-6">
@@ -57,7 +61,7 @@ async function DashboardContent() {
                       <item.icon className="text-muted-foreground size-5" />
                       <CardTitle>{item.title}</CardTitle>
                     </div>
-                    <CardDescription>{item.description}</CardDescription>
+                    <CardDescription>{counts[item.href] ?? item.description}</CardDescription>
                   </CardHeader>
                 </Card>
               </Link>
