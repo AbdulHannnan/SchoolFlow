@@ -93,6 +93,9 @@ model User {
   /// Contact number in E.164 form (e.g. "923001234567"), used by the WhatsApp
   /// notification channel (Module 4.3). Optional: not every account has one.
   phone        String?
+  /// National ID (Pakistani CNIC), 13 digits stored normalized. Used for
+  /// parents/guardians; optional and null for other roles.
+  cnic         String?
   role         Role
   isActive     Boolean @default(true)
   /// A teacher's main (primary) subject - the subject they were hired for.

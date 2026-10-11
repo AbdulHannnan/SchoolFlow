@@ -40,6 +40,32 @@ export function CreateParentForm() {
         />
         {errors.password ? <p className="text-destructive text-xs">{errors.password}</p> : null}
       </div>
+      <div className="space-y-2">
+        <Label htmlFor="parent-cnic">
+          CNIC <span className="text-muted-foreground font-normal">(optional)</span>
+        </Label>
+        <Input
+          id="parent-cnic"
+          name="cnic"
+          inputMode="numeric"
+          placeholder="3520212345671"
+          aria-invalid={!!errors.cnic}
+        />
+        {errors.cnic ? <p className="text-destructive text-xs">{errors.cnic}</p> : null}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="parent-phone">
+          Contact number <span className="text-muted-foreground font-normal">(optional)</span>
+        </Label>
+        <Input
+          id="parent-phone"
+          name="phone"
+          inputMode="tel"
+          placeholder="923001234567"
+          aria-invalid={!!errors.phone}
+        />
+        {errors.phone ? <p className="text-destructive text-xs">{errors.phone}</p> : null}
+      </div>
       <div className="sm:col-span-3">
         <Button type="submit" disabled={pending}>
           {pending ? "Adding..." : "Add parent"}

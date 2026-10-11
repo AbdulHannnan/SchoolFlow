@@ -16,6 +16,19 @@ const parentSchema = z.object({
     .toLowerCase()
     .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Enter a valid email"),
   password: z.string().min(8, "Use at least 8 characters").max(200),
+  // CNIC: 13 digits, dashes/spaces allowed on input; stored digits-only.
+  cnic: z
+    .string()
+    .trim()
+    .transform((v) => v.replace(/[\s-]/g, ""))
+    .refine((v) => v === "" || /^\d{13}$/.test(v), "CNIC must be 13 digits")
+    .transform((v) => (v === "" ? null : v)),
+  // Contact number: digits with an optional leading +, stored as entered.
+  phone: z
+    .string()
+    .trim()
+    .refine((v) => v === "" || /^\+?\d{7,15}$/.test(v), "Enter a valid phone number")
+    .transform((v) => (v === "" ? null : v)),
 });
 
 const linkSchema = z.object({
@@ -43,6 +56,8 @@ export async function createParentAction(_prev: FormState, formData: FormData): 
     name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
+    cnic: formData.get("cnic") ?? "",
+    phone: formData.get("phone") ?? "",
   });
   if (!parsed.success) {
     return {
