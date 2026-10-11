@@ -10,7 +10,8 @@ import { AddSectionForm } from "@/components/academics/add-section-form";
 import { DeleteButton } from "@/components/academics/delete-button";
 import { deleteClassAction, deleteSectionAction } from "@/app/classes/actions";
 import { requireRole } from "@/server/auth/dal";
-import { listClassesWithSections } from "@/server/academics/classes";
+import { listClassesWithSections, listTeacherOptions } from "@/server/academics/classes";
+import { User as UserIcon, GraduationCap } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Classes - School Management",
@@ -28,7 +29,7 @@ export default function ClassesPage() {
 
 async function ClassesContent() {
   await requireRole("HEAD");
-  const classes = await listClassesWithSections();
+  const [classes, teachers] = await Promise.all([listClassesWithSections(), listTeacherOptions()]);
 
   return (
     <div className="space-y-6">
@@ -37,7 +38,7 @@ async function ClassesContent() {
           <CardTitle className="text-base">Add a class</CardTitle>
         </CardHeader>
         <CardContent>
-          <CreateClassForm />
+          <CreateClassForm teachers={teachers} />
         </CardContent>
       </Card>
 
@@ -61,6 +62,21 @@ async function ClassesContent() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
+                <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                  <span className="flex items-center gap-1.5">
+                    <UserIcon className="size-4" />
+                    {cls.classTeacher ? (
+                      <span className="text-foreground font-medium">{cls.classTeacher.name}</span>
+                    ) : (
+                      "No class teacher"
+                    )}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <GraduationCap className="size-4" />
+                    <span className="text-foreground font-medium">{cls._count.students}</span>
+                    {cls._count.students === 1 ? "student" : "students"}
+                  </span>
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {cls.sections.length === 0 ? (
                     <span className="text-muted-foreground text-sm">No sections.</span>

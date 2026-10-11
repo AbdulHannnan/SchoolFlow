@@ -96,6 +96,7 @@ model User {
   isActive     Boolean @default(true)
 
   teacherAssignments TeacherAssignment[]
+  classesLed         Class[]             @relation("ClassTeacher")
   parentLinks        ParentStudent[]
   attendanceMarked   Attendance[]
   notifications      Notification[]
@@ -124,6 +125,13 @@ model Class {
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   name     String
   level    Int?
+  /// The class (homeroom) teacher - the single teacher in charge of this class,
+  /// distinct from the per-subject `teacherAssignments`. Optional. A single-
+  /// column SetNull FK (audit-style): composite SetNull would force `schoolId`
+  /// NULL and break the NOT NULL constraint, so tenant-safety is re-checked in
+  /// the service (the teacher must resolve in-tenant with role TEACHER).
+  classTeacherId String?
+  classTeacher   User?   @relation("ClassTeacher", fields: [classTeacherId], references: [id], onDelete: SetNull)
 
   sections           Section[]
   teacherAssignments TeacherAssignment[]
@@ -140,6 +148,7 @@ model Class {
   @@unique([schoolId, name])
   @@unique([schoolId, id]) // enables composite (tenant-safe) foreign keys
   @@index([schoolId])
+  @@index([classTeacherId])
   @@map("classes")
 }
 

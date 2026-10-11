@@ -13,16 +13,51 @@ export function listClassesWithSections() {
   return withCurrentTenant((tx) =>
     tx.class.findMany({
       orderBy: [{ level: "asc" }, { name: "asc" }],
-      include: { sections: { orderBy: { name: "asc" } } },
+      include: {
+        sections: { orderBy: { name: "asc" } },
+        classTeacher: { select: { id: true, name: true } },
+        _count: { select: { students: true } },
+      },
     }),
   );
 }
 
-export async function createClass(input: { name: string; level: number | null }) {
-  const { schoolId } = await requireSchool();
-  return withTenant(schoolId, (tx) =>
-    tx.class.create({ data: { schoolId, name: input.name, level: input.level } }),
+/** Active teachers (id + name) for the class-teacher picker. */
+export function listTeacherOptions() {
+  return withCurrentTenant((tx) =>
+    tx.user.findMany({
+      where: { role: "TEACHER", isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
   );
+}
+
+export async function createClass(input: {
+  name: string;
+  level: number | null;
+  classTeacherId: string | null;
+}) {
+  const { schoolId } = await requireSchool();
+  return withTenant(schoolId, async (tx) => {
+    // RLS doesn't guard FK targets, so re-check the teacher resolves in-tenant
+    // (same school, role TEACHER) before pinning them as the class teacher.
+    if (input.classTeacherId) {
+      const teacher = await tx.user.findFirst({
+        where: { id: input.classTeacherId, role: "TEACHER" },
+        select: { id: true },
+      });
+      if (!teacher) throw new Error("Selected class teacher was not found");
+    }
+    return tx.class.create({
+      data: {
+        schoolId,
+        name: input.name,
+        level: input.level,
+        classTeacherId: input.classTeacherId,
+      },
+    });
+  });
 }
 
 export async function createSection(input: { classId: string; name: string }) {

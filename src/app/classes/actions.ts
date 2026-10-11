@@ -13,6 +13,10 @@ const classSchema = z.object({
   level: z
     .union([z.literal(""), z.coerce.number().int().min(0).max(20)])
     .transform((v) => (v === "" ? null : v)),
+  classTeacherId: z
+    .string()
+    .trim()
+    .transform((v) => (v === "" ? null : v)),
 });
 
 const sectionSchema = z.object({
@@ -35,6 +39,7 @@ export async function createClassAction(_prev: FormState, formData: FormData): P
   const parsed = classSchema.safeParse({
     name: formData.get("name"),
     level: formData.get("level") ?? "",
+    classTeacherId: formData.get("classTeacherId") ?? "",
   });
   if (!parsed.success) {
     return {
@@ -55,6 +60,9 @@ export async function createClassAction(_prev: FormState, formData: FormData): P
         message: "That class already exists.",
         fieldErrors: { name: "Already exists" },
       };
+    }
+    if (error instanceof Error) {
+      return { status: "error", message: error.message };
     }
     throw error;
   }
