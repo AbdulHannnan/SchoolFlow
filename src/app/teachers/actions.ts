@@ -23,6 +23,10 @@ const teacherSchema = z.object({
     .toLowerCase()
     .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Enter a valid email"),
   password: z.string().min(8, "Use at least 8 characters").max(200),
+  mainSubjectId: z
+    .string()
+    .trim()
+    .transform((v) => (v === "" ? null : v)),
 });
 
 const assignmentSchema = z.object({
@@ -50,6 +54,7 @@ export async function createTeacherAction(
     name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
+    mainSubjectId: formData.get("mainSubjectId") ?? "",
   });
   if (!parsed.success) {
     return {
@@ -70,6 +75,9 @@ export async function createTeacherAction(
         message: "A user with that email already exists in this school.",
         fieldErrors: { email: "Already in use" },
       };
+    }
+    if (error instanceof Error) {
+      return { status: "error", message: error.message };
     }
     throw error;
   }

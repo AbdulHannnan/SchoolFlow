@@ -8,7 +8,12 @@ import { Label } from "@/components/ui/label";
 import { createTeacherAction } from "@/app/teachers/actions";
 import { initialFormState } from "@/app/teachers/form-state";
 
-export function CreateTeacherForm() {
+type SubjectOption = { id: string; name: string };
+
+const selectClass =
+  "border-input dark:bg-input/30 h-9 w-full rounded-md border bg-transparent px-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]";
+
+export function CreateTeacherForm({ subjects }: { subjects: SubjectOption[] }) {
   const [state, action, pending] = useActionState(createTeacherAction, initialFormState);
   const formRef = useRef<HTMLFormElement>(null);
   const errors = state.fieldErrors ?? {};
@@ -45,6 +50,19 @@ export function CreateTeacherForm() {
           aria-invalid={!!errors.password}
         />
         {errors.password ? <p className="text-destructive text-xs">{errors.password}</p> : null}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="teacher-subject">
+          Main subject <span className="text-muted-foreground font-normal">(optional)</span>
+        </Label>
+        <select id="teacher-subject" name="mainSubjectId" defaultValue="" className={selectClass}>
+          <option value="">No main subject</option>
+          {subjects.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="sm:col-span-3">
         <Button type="submit" disabled={pending}>

@@ -35,6 +35,25 @@ export function listTeachers() {
           select: { id: true, name: true },
           orderBy: { name: "asc" },
         },
+        mainSubject: { select: { id: true, name: true } },
+      },
+    }),
+  );
+}
+
+/** Every timetable slot across all teachers, for the school-wide timetable view.
+ * Ordered by day, then period, then teacher name. */
+export function listAllTimetable() {
+  return withCurrentTenant((tx) =>
+    tx.timetableEntry.findMany({
+      orderBy: [{ day: "asc" }, { period: "asc" }, { teacher: { name: "asc" } }],
+      select: {
+        id: true,
+        day: true,
+        period: true,
+        teacher: { select: { id: true, name: true } },
+        subject: { select: { name: true } },
+        class: { select: { name: true } },
       },
     }),
   );
@@ -105,14 +124,34 @@ export async function deleteTimetableEntry(id: string) {
   return withTenant(schoolId, (tx) => tx.timetableEntry.deleteMany({ where: { id } }));
 }
 
-export async function createTeacher(input: { name: string; email: string; password: string }) {
+export async function createTeacher(input: {
+  name: string;
+  email: string;
+  password: string;
+  mainSubjectId: string | null;
+}) {
   const { schoolId } = await requireSchool();
   const passwordHash = await hashPassword(input.password);
-  return withTenant(schoolId, (tx) =>
-    tx.user.create({
-      data: { schoolId, email: input.email, name: input.name, role: "TEACHER", passwordHash },
-    }),
-  );
+  return withTenant(schoolId, async (tx) => {
+    // RLS doesn't guard FK targets - re-check the main subject resolves in-tenant.
+    if (input.mainSubjectId) {
+      const subject = await tx.subject.findUnique({
+        where: { id: input.mainSubjectId },
+        select: { id: true },
+      });
+      if (!subject) throw new Error("Selected subject was not found");
+    }
+    return tx.user.create({
+      data: {
+        schoolId,
+        email: input.email,
+        name: input.name,
+        role: "TEACHER",
+        passwordHash,
+        mainSubjectId: input.mainSubjectId,
+      },
+    });
+  });
 }
 
 export async function deleteTeacher(id: string) {

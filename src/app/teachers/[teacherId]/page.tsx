@@ -7,13 +7,11 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { addBoxClass } from "@/components/ui/add-box";
 import { AddTimetableForm } from "@/components/academics/add-timetable-form";
-import { DeleteButton } from "@/components/academics/delete-button";
-import { deleteTimetableEntryAction } from "@/app/teachers/actions";
+import { TimetableDayView } from "@/components/academics/timetable-day-view";
 import { requireRole } from "@/server/auth/dal";
 import { getTeacherTimetable } from "@/server/academics/teachers";
 import { listSubjects } from "@/server/academics/subjects";
 import { listClassesWithSections } from "@/server/academics/classes";
-import { WEEKDAY_LABELS } from "@/lib/timetable";
 
 export const metadata: Metadata = {
   title: "Teacher timetable - School Management",
@@ -61,50 +59,10 @@ async function TimetableContent({ params }: { params: Params }) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">
-            Timetable
-            <span className="text-muted-foreground ml-2 text-sm font-normal">
-              {entries.length} {entries.length === 1 ? "period" : "periods"}
-            </span>
-          </CardTitle>
+          <CardTitle className="text-base">Timetable</CardTitle>
         </CardHeader>
         <CardContent>
-          {entries.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No periods scheduled yet.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-muted-foreground border-b text-left">
-                    <th className="w-10 py-2 pr-3 font-medium">#</th>
-                    <th className="py-2 pr-3 font-medium">Day</th>
-                    <th className="py-2 pr-3 font-medium">Period</th>
-                    <th className="py-2 pr-3 font-medium">Subject</th>
-                    <th className="py-2 pr-3 font-medium">Class</th>
-                    <th className="w-10 py-2" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {entries.map((e, i) => (
-                    <tr key={e.id} className="border-b last:border-0">
-                      <td className="text-muted-foreground py-2 pr-3">{i + 1}</td>
-                      <td className="py-2 pr-3">{WEEKDAY_LABELS[e.day]}</td>
-                      <td className="py-2 pr-3">{e.period}</td>
-                      <td className="py-2 pr-3 font-medium">{e.subject.name}</td>
-                      <td className="py-2 pr-3">{e.class.name}</td>
-                      <td className="py-2">
-                        <DeleteButton
-                          action={deleteTimetableEntryAction}
-                          id={e.id}
-                          label={`${WEEKDAY_LABELS[e.day]} period ${e.period}`}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <TimetableDayView entries={entries} />
         </CardContent>
       </Card>
 

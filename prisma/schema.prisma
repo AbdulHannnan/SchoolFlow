@@ -95,6 +95,11 @@ model User {
   phone        String?
   role         Role
   isActive     Boolean @default(true)
+  /// A teacher's main (primary) subject - the subject they were hired for.
+  /// Single-column SetNull FK (audit-style), re-checked in-tenant like
+  /// Class.classTeacher. Null for non-teachers.
+  mainSubjectId String?
+  mainSubject   Subject? @relation("TeacherMainSubject", fields: [mainSubjectId], references: [id], onDelete: SetNull)
 
   teacherAssignments TeacherAssignment[]
   classesLed         Class[]             @relation("ClassTeacher")
@@ -116,6 +121,7 @@ model User {
   @@unique([schoolId, email])
   @@unique([schoolId, id]) // enables composite (tenant-safe) foreign keys
   @@index([schoolId])
+  @@index([mainSubjectId])
   @@map("users")
 }
 
@@ -286,6 +292,7 @@ model Subject {
   diaryEntries       DiaryEntry[]
   examSubjects       ExamSubject[]
   timetableEntries   TimetableEntry[]
+  mainForTeachers    User[]              @relation("TeacherMainSubject")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

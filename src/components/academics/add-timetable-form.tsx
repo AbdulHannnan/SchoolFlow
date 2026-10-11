@@ -17,10 +17,13 @@ const selectClass =
 
 export function AddTimetableForm({
   teacherId,
+  teachers,
   subjects,
   classes,
 }: {
-  teacherId: string;
+  // Fixed teacher (per-teacher page) OR a teacher picker (all-teachers page).
+  teacherId?: string;
+  teachers?: Option[];
   subjects: Option[];
   classes: Option[];
 }) {
@@ -35,9 +38,25 @@ export function AddTimetableForm({
     <form
       ref={formRef}
       action={action}
-      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:items-end"
+      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6 lg:items-end"
     >
-      <input type="hidden" name="teacherId" value={teacherId} />
+      {teachers ? (
+        <div className="space-y-2">
+          <Label htmlFor="tt-teacher">Teacher</Label>
+          <select id="tt-teacher" name="teacherId" defaultValue="" required className={selectClass}>
+            <option value="" disabled>
+              Select...
+            </option>
+            {teachers.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <input type="hidden" name="teacherId" value={teacherId} />
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="tt-day">Day</Label>
@@ -99,7 +118,7 @@ export function AddTimetableForm({
       </div>
 
       {state.status === "error" && state.message ? (
-        <p role="alert" className="text-destructive text-sm lg:col-span-5">
+        <p role="alert" className="text-destructive col-span-full text-sm">
           {state.message}
         </p>
       ) : null}
