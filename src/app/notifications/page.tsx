@@ -119,6 +119,7 @@ async function NotificationsContent() {
 const TYPE_LABELS: Record<string, string> = {
   GENERAL: "General",
   ATTENDANCE_ABSENT: "Attendance",
+  MEETING: "Meeting",
 };
 
 function typeLabel(type: string): string {

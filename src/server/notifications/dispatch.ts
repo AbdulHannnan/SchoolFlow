@@ -81,6 +81,16 @@ export type AppEvent =
       studentId: string;
       studentName: string;
       reason: string;
+    })
+  | (BaseEvent & {
+      /** A HEAD scheduled a staff meeting (Module 8.3). Recipients are the
+       * invited teachers. Carries the meeting's title, when (human-readable)
+       * and optional location so the in-app message renders without a lookup. */
+      type: "STAFF_MEETING";
+      meetingId: string;
+      meetingTitle: string;
+      when: string;
+      location: string | null;
     });
 
 /** Every implemented channel, keyed by name for per-event targeting. */
@@ -156,6 +166,19 @@ function renderEvent(event: AppEvent): NotificationMessage[] {
         title: `Red flag: ${event.studentName}`,
         body: `${event.studentName} — ${event.reason}. Review and follow up.`,
         data: { studentId: event.studentId, studentName: event.studentName, reason: event.reason },
+      }));
+    case "STAFF_MEETING":
+      return event.recipientIds.map((recipientId) => ({
+        recipientId,
+        type: "MEETING",
+        title: `Staff meeting: ${event.meetingTitle}`,
+        body: event.location ? `${event.when} at ${event.location}.` : `${event.when}.`,
+        data: {
+          meetingId: event.meetingId,
+          title: event.meetingTitle,
+          when: event.when,
+          location: event.location,
+        },
       }));
   }
 }

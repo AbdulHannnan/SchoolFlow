@@ -57,6 +57,8 @@ model School {
   timetableEntries       TimetableEntry[]
   staffAttendance        StaffAttendance[]
   plannerEntries         PlannerEntry[]
+  meetings               Meeting[]
+  meetingInvitees        MeetingInvitee[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -117,6 +119,8 @@ model User {
   staffAttendance        StaffAttendance[] @relation("StaffAttendanceStaff")
   staffAttendanceMarked  StaffAttendance[] @relation("StaffAttendanceMarker")
   plannerEntries     PlannerEntry[]
+  meetingsCreated    Meeting[]
+  meetingInvites     MeetingInvitee[]
   notifications      Notification[]
   pushSubscriptions  PushSubscription[]
   scheduledNotifications ScheduledNotification[]
@@ -498,6 +502,59 @@ enum PlannerStatus {
   COMPLETED
 
   @@map("planner_status")
+}
+
+/// A staff meeting a HEAD schedules for teachers (Module 8.3). `scheduledAt` is
+/// a full timestamp (date + time). Invited teachers are linked via
+/// `MeetingInvitee`; creating a meeting fans a MEETING notification out to them
+/// through the Module 4 engine. `createdById` is the HEAD who scheduled it — a
+/// single-column SetNull audit FK (like Attendance.markedBy), so the meeting
+/// survives if that account is removed. Tenant-scoped via RLS;
+/// `@@unique([schoolId, id])` lets invitees reference it with a tenant-safe
+/// composite FK.
+model Meeting {
+  id          String   @id @default(cuid())
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  title       String
+  agenda      String?
+  location    String?
+  scheduledAt DateTime
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  invitees MeetingInvitee[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, id])
+  @@index([schoolId])
+  @@index([schoolId, scheduledAt])
+  @@map("meetings")
+}
+
+/// Links a staff meeting to an invited teacher (Module 8.3). Composite FKs keep
+/// meeting and teacher in the same school; both cascade, so removing a meeting
+/// (or a teacher) clears the invite. One row per (meeting, teacher).
+/// Tenant-scoped via RLS.
+model MeetingInvitee {
+  id        String  @id @default(cuid())
+  schoolId  String
+  school    School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  meetingId String
+  meeting   Meeting @relation(fields: [schoolId, meetingId], references: [schoolId, id], onDelete: Cascade)
+  teacherId String
+  teacher   User    @relation(fields: [schoolId, teacherId], references: [schoolId, id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([meetingId, teacherId])
+  @@index([schoolId])
+  @@index([meetingId])
+  @@index([teacherId])
+  @@map("meeting_invitees")
 }
 
 /// A homework assignment or daily-diary note a teacher posts for a class
@@ -1000,6 +1057,7 @@ enum NotificationType {
   HOMEWORK_POSTED
   FEE_REMINDER
   RED_FLAG
+  MEETING
 
   @@map("notification_type")
 }
