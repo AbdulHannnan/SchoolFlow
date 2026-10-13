@@ -64,7 +64,7 @@
 ## Module 8 - Staff / Teacher Side (Phase 2)
 
 - [x] 8.1 Teacher (staff) attendance
-- [ ] 8.2 Planner register
+- [x] 8.2 Planner register
 - [ ] 8.3 Meeting notifications to teachers
 
 ## Module 9 - Portals & Dashboards (Phase 2)

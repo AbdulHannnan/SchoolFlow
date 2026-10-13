@@ -56,6 +56,7 @@ model School {
   redFlags               RedFlag[]
   timetableEntries       TimetableEntry[]
   staffAttendance        StaffAttendance[]
+  plannerEntries         PlannerEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -115,6 +116,7 @@ model User {
   // rows this user marked as HEAD. Two relations to the same table.
   staffAttendance        StaffAttendance[] @relation("StaffAttendanceStaff")
   staffAttendanceMarked  StaffAttendance[] @relation("StaffAttendanceMarker")
+  plannerEntries     PlannerEntry[]
   notifications      Notification[]
   pushSubscriptions  PushSubscription[]
   scheduledNotifications ScheduledNotification[]
@@ -162,6 +164,7 @@ model Class {
   invoices           Invoice[]
   exams              Exam[]
   timetableEntries   TimetableEntry[]
+  plannerEntries     PlannerEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -300,6 +303,7 @@ model Subject {
   diaryEntries       DiaryEntry[]
   examSubjects       ExamSubject[]
   timetableEntries   TimetableEntry[]
+  plannerEntries     PlannerEntry[]
   mainForTeachers    User[]              @relation("TeacherMainSubject")
 
   createdAt DateTime @default(now())
@@ -449,6 +453,51 @@ model StaffAttendance {
   @@index([staffId])
   @@index([date])
   @@map("staff_attendance")
+}
+
+/// A teacher's lesson-plan entry in the planner register (Module 8.2): for a
+/// `date`, the `topic` and plan `details` (and optional planned `homework`) a
+/// teacher intends to cover with a class in a subject. `status` lets the teacher
+/// mark it taught (COMPLETED). The register is an internal staff record a HEAD
+/// reviews - unlike the Module 5 diary it is not pushed to parents. `teacherId`
+/// is the owning teacher (composite FK, cascade); class cascades too, while
+/// subject uses NoAction so a subject still referenced by a plan can't be
+/// deleted out from under it (history is preserved, as with the diary). One plan
+/// per teacher/class/subject/day (`@@unique`) makes saving idempotent.
+/// Tenant-scoped via RLS.
+model PlannerEntry {
+  id        String        @id @default(cuid())
+  schoolId  String
+  school    School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacherId String
+  teacher   User          @relation(fields: [schoolId, teacherId], references: [schoolId, id], onDelete: Cascade)
+  classId   String
+  class     Class         @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
+  subjectId String
+  subject   Subject       @relation(fields: [schoolId, subjectId], references: [schoolId, id], onDelete: NoAction)
+  date      DateTime      @db.Date
+  topic     String
+  details   String
+  homework  String?
+  status    PlannerStatus @default(PLANNED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teacherId, classId, subjectId, date])
+  @@index([schoolId])
+  @@index([teacherId])
+  @@index([classId])
+  @@index([schoolId, date])
+  @@map("planner_entries")
+}
+
+/// A planner entry's state: PLANNED until the teacher marks it taught (COMPLETED).
+enum PlannerStatus {
+  PLANNED
+  COMPLETED
+
+  @@map("planner_status")
 }
 
 /// A homework assignment or daily-diary note a teacher posts for a class

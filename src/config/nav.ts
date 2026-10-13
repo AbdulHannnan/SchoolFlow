@@ -7,6 +7,7 @@ import {
   Contact,
   CalendarCheck,
   UserCheck,
+  CalendarRange,
   NotebookPen,
   ClipboardList,
   TrendingUp,
@@ -43,6 +44,7 @@ export const navItems: NavItem[] = [
   { title: "Parents", href: "/parents", icon: Contact, description: "Guardians and student links", module: "2.5", ready: true }, // prettier-ignore
   { title: "Attendance", href: "/attendance", icon: CalendarCheck, description: "Mark and review attendance", module: "3", ready: true }, // prettier-ignore
   { title: "Staff Attendance", href: "/staff-attendance", icon: UserCheck, description: "Mark and review staff attendance", module: "8.1", ready: true }, // prettier-ignore
+  { title: "Planner", href: "/planner", icon: CalendarRange, description: "Teacher lesson-plan register", module: "8.2", ready: true }, // prettier-ignore
   { title: "Homework", href: "/homework", icon: NotebookPen, description: "Daily diary and homework", module: "5", ready: true }, // prettier-ignore
   { title: "Exams", href: "/exams", icon: ClipboardList, description: "Exams, grades and report cards", module: "7", ready: true }, // prettier-ignore
   { title: "Progress", href: "/progress", icon: TrendingUp, description: "Student progress dashboards", module: "7.4", ready: true }, // prettier-ignore
