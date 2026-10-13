@@ -17,6 +17,11 @@ export const metadata: Metadata = {
   title: "Teacher timetable - School Management",
 };
 
+// Dynamic route: the shell's `usePathname()` has no statically-known path for a
+// `[teacherId]` segment, so this renders on demand rather than prerendering a
+// static shell. See the Cache Components notes.
+export const instant = false;
+
 type Params = Promise<{ teacherId: string }>;
 
 export default function TeacherTimetablePage({ params }: { params: Params }) {

@@ -55,6 +55,7 @@ model School {
   examResults            ExamResult[]
   redFlags               RedFlag[]
   timetableEntries       TimetableEntry[]
+  staffAttendance        StaffAttendance[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -110,6 +111,10 @@ model User {
   timetable          TimetableEntry[]
   parentLinks        ParentStudent[]
   attendanceMarked   Attendance[]
+  // Staff attendance where this user is the staff member, and (separately) the
+  // rows this user marked as HEAD. Two relations to the same table.
+  staffAttendance        StaffAttendance[] @relation("StaffAttendanceStaff")
+  staffAttendanceMarked  StaffAttendance[] @relation("StaffAttendanceMarker")
   notifications      Notification[]
   pushSubscriptions  PushSubscription[]
   scheduledNotifications ScheduledNotification[]
@@ -413,6 +418,37 @@ enum AttendanceStatus {
   LEAVE
 
   @@map("attendance_status")
+}
+
+/// A daily staff-attendance record: one row per staff member (a TEACHER User)
+/// per calendar day (Module 8.1). Mirrors student `Attendance` but flat — staff
+/// aren't grouped by class/section. A HEAD marks it; `markedById` is that actor,
+/// a single-column SetNull FK (audit only, like Attendance.markedBy), so the
+/// history survives if the account is later removed (the composite SetNull form
+/// would force schoolId NULL and break the NOT NULL constraint). The staff
+/// member is pinned to the same school by a composite FK. Reuses the
+/// `AttendanceStatus` outcome (PRESENT/ABSENT/LATE/LEAVE). One row per staff
+/// member per day makes marking idempotent. Tenant-scoped via RLS.
+model StaffAttendance {
+  id         String           @id @default(cuid())
+  schoolId   String
+  school     School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  staffId    String
+  staff      User             @relation("StaffAttendanceStaff", fields: [schoolId, staffId], references: [schoolId, id], onDelete: Cascade)
+  date       DateTime         @db.Date
+  status     AttendanceStatus
+  note       String?
+  markedById String?
+  markedBy   User?            @relation("StaffAttendanceMarker", fields: [markedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([staffId, date])
+  @@index([schoolId])
+  @@index([staffId])
+  @@index([date])
+  @@map("staff_attendance")
 }
 
 /// A homework assignment or daily-diary note a teacher posts for a class

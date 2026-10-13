@@ -63,7 +63,7 @@
 
 ## Module 8 - Staff / Teacher Side (Phase 2)
 
-- [ ] 8.1 Teacher (staff) attendance
+- [x] 8.1 Teacher (staff) attendance
 - [ ] 8.2 Planner register
 - [ ] 8.3 Meeting notifications to teachers
 
