@@ -70,7 +70,7 @@
 ## Module 9 - Portals & Dashboards (Phase 2)
 
 - [x] 9.1 Head dashboard
-- [ ] 9.2 Teacher portal
+- [x] 9.2 Teacher portal
 - [ ] 9.3 Parent portal
 - [ ] 9.4 Student portal
 

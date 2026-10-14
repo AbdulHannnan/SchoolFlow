@@ -9,6 +9,7 @@ import { navItems } from "@/config/nav";
 import { hasRole, verifySession } from "@/server/auth/dal";
 import { getDashboardCounts } from "@/server/dashboard";
 import { HeadDashboard } from "@/components/dashboard/head-dashboard";
+import { TeacherDashboard } from "@/components/dashboard/teacher-dashboard";
 
 export default function Home() {
   return (
@@ -25,17 +26,20 @@ async function DashboardContent() {
   const user = await verifySession();
 
   const isHead = hasRole(user, "HEAD");
+  const isTeacher = hasRole(user, "TEACHER");
+
+  const subtitle = isHead
+    ? "Your school at a glance. Use the sidebar to drill into any area."
+    : isTeacher
+      ? "Your day at a glance. Use the sidebar to drill into any area."
+      : "Jump to any area below, or use the sidebar to navigate.";
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Welcome, {user.name}</h2>
-          <p className="text-muted-foreground text-sm">
-            {isHead
-              ? "Your school at a glance. Use the sidebar to drill into any area."
-              : "Jump to any area below, or use the sidebar to navigate."}
-          </p>
+          <p className="text-muted-foreground text-sm">{subtitle}</p>
         </div>
         {hasRole(user, "SUPER_ADMIN") ? (
           <Button asChild variant="outline" size="sm">
@@ -47,7 +51,7 @@ async function DashboardContent() {
         ) : null}
       </div>
 
-      {isHead ? <HeadDashboard /> : <NavGrid />}
+      {isHead ? <HeadDashboard /> : isTeacher ? <TeacherDashboard /> : <NavGrid />}
     </div>
   );
 }
