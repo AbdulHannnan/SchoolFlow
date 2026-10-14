@@ -10,6 +10,7 @@ import { hasRole, verifySession } from "@/server/auth/dal";
 import { getDashboardCounts } from "@/server/dashboard";
 import { HeadDashboard } from "@/components/dashboard/head-dashboard";
 import { TeacherDashboard } from "@/components/dashboard/teacher-dashboard";
+import { ParentDashboard } from "@/components/dashboard/parent-dashboard";
 
 export default function Home() {
   return (
@@ -27,12 +28,15 @@ async function DashboardContent() {
 
   const isHead = hasRole(user, "HEAD");
   const isTeacher = hasRole(user, "TEACHER");
+  const isParent = hasRole(user, "PARENT");
 
   const subtitle = isHead
     ? "Your school at a glance. Use the sidebar to drill into any area."
     : isTeacher
       ? "Your day at a glance. Use the sidebar to drill into any area."
-      : "Jump to any area below, or use the sidebar to navigate.";
+      : isParent
+        ? "Your children at a glance. Use the sidebar to drill into any area."
+        : "Jump to any area below, or use the sidebar to navigate.";
 
   return (
     <div className="space-y-6">
@@ -51,7 +55,15 @@ async function DashboardContent() {
         ) : null}
       </div>
 
-      {isHead ? <HeadDashboard /> : isTeacher ? <TeacherDashboard /> : <NavGrid />}
+      {isHead ? (
+        <HeadDashboard />
+      ) : isTeacher ? (
+        <TeacherDashboard />
+      ) : isParent ? (
+        <ParentDashboard />
+      ) : (
+        <NavGrid />
+      )}
     </div>
   );
 }

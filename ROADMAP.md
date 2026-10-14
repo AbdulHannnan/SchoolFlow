@@ -71,7 +71,7 @@
 
 - [x] 9.1 Head dashboard
 - [x] 9.2 Teacher portal
-- [ ] 9.3 Parent portal
+- [x] 9.3 Parent portal
 - [ ] 9.4 Student portal
 
 ## Module 10 - PWA, Localization & Deploy (Phase 2)
