@@ -14,7 +14,12 @@ import { deleteDiaryEntryAction } from "@/app/homework/actions";
 import { verifySession } from "@/server/auth/dal";
 import { listMarkableClasses } from "@/server/academics/attendance";
 import { listSubjects } from "@/server/academics/subjects";
-import { listChildrenDiary, listClassDiary, type DiaryListEntry } from "@/server/academics/diary";
+import {
+  listChildrenDiary,
+  listDiaryByClass,
+  type ClassDiaryFeed,
+  type DiaryListEntry,
+} from "@/server/academics/diary";
 import { formatDay, todayISODate } from "@/lib/attendance";
 
 export const metadata: Metadata = {
@@ -62,10 +67,7 @@ async function HomeworkContent({ searchParams }: { searchParams: SearchParams })
     sections: c.sections,
   }));
 
-  const [subjects, feed] = await Promise.all([
-    listSubjects(),
-    selectedClass ? listClassDiary({ classId: selectedClass.id, sectionId }) : null,
-  ]);
+  const [subjects, feeds] = await Promise.all([listSubjects(), listDiaryByClass()]);
 
   return (
     <div className="space-y-6">
@@ -82,56 +84,96 @@ async function HomeworkContent({ searchParams }: { searchParams: SearchParams })
         </CardContent>
       </Card>
 
-      {!selectedClass ? (
-        <p className="text-muted-foreground text-sm">
-          Pick a class above to post homework and see recent entries.
-        </p>
+      {selectedClass ? (
+        <Card className={addBoxClass}>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Post to {selectedClass.name}
+              {sectionId
+                ? ` - ${selectedClass.sections.find((s) => s.id === sectionId)?.name}`
+                : " (whole class)"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PostDiaryForm
+              classId={selectedClass.id}
+              sectionId={sectionId ?? ""}
+              subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}
+              today={todayISODate()}
+            />
+          </CardContent>
+        </Card>
       ) : (
-        <>
-          <Card className={addBoxClass}>
-            <CardHeader>
-              <CardTitle className="text-base">
-                Post to {selectedClass.name}
-                {sectionId
-                  ? ` - ${selectedClass.sections.find((s) => s.id === sectionId)?.name}`
-                  : " (whole class)"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PostDiaryForm
-                classId={selectedClass.id}
-                sectionId={sectionId ?? ""}
-                subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}
-                today={todayISODate()}
-              />
-            </CardContent>
-          </Card>
-
-          <section className="space-y-3">
-            <h2 className="text-sm font-medium">Recent entries</h2>
-            {feed && feed.entries.length > 0 ? (
-              <ul className="space-y-3">
-                {feed.entries.map((entry) => (
-                  <li key={entry.id}>
-                    <DiaryEntryCard
-                      entry={entry}
-                      action={
-                        <DeleteButton
-                          action={deleteDiaryEntryAction}
-                          id={entry.id}
-                          label={entry.title}
-                        />
-                      }
-                    />
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-muted-foreground text-sm">Nothing posted yet.</p>
-            )}
-          </section>
-        </>
+        <p className="text-muted-foreground text-sm">
+          Pick a class above to post homework. Every class&apos;s diary is shown below.
+        </p>
       )}
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium">Homework &amp; diary by class</h2>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {feeds.map((feed) => (
+            <ClassDiaryBox key={feed.class.id} feed={feed} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/** A box for one class: its name and that class's recent diary entries. */
+function ClassDiaryBox({ feed }: { feed: ClassDiaryFeed }) {
+  const { entries } = feed;
+  return (
+    <Card className="h-full">
+      <CardHeader>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-base">{feed.class.name}</CardTitle>
+          <Badge variant="secondary">
+            {entries.length} {entries.length === 1 ? "entry" : "entries"}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {entries.length === 0 ? (
+          <p className="text-muted-foreground text-sm">Nothing posted yet.</p>
+        ) : (
+          <ul className="divide-border divide-y">
+            {entries.map((entry) => (
+              <li key={entry.id} className="py-3 first:pt-0 last:pb-0">
+                <DiaryEntryItem entry={entry} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** A compact entry inside a class box (no nested Card), with a delete control. */
+function DiaryEntryItem({ entry }: { entry: DiaryListEntry }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 space-y-1">
+          <p className="font-medium">{entry.title}</p>
+          <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
+            <Badge variant={entry.type === "HOMEWORK" ? "default" : "secondary"}>
+              {typeLabel(entry.type)}
+            </Badge>
+            {entry.subject ? <span>{entry.subject.name}</span> : null}
+            {entry.section ? <span>Section {entry.section.name}</span> : null}
+            <span>{formatDay(entry.date)}</span>
+            {entry.dueDate ? <span>Due {formatDay(entry.dueDate)}</span> : null}
+          </div>
+        </div>
+        <DeleteButton action={deleteDiaryEntryAction} id={entry.id} label={entry.title} />
+      </div>
+      <p className="text-sm whitespace-pre-wrap">{entry.content}</p>
+      {entry.createdBy ? (
+        <p className="text-muted-foreground text-xs">Posted by {entry.createdBy.name}</p>
+      ) : null}
     </div>
   );
 }

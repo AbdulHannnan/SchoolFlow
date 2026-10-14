@@ -17,6 +17,7 @@ import { formatDay } from "@/lib/attendance";
  */
 
 const CLASS_FEED_LIMIT = 50;
+const CLASS_OVERVIEW_LIMIT = 10;
 const PARENT_FEED_LIMIT = 20;
 
 /**
@@ -199,6 +200,57 @@ export async function listClassDiary(input: { classId: string; sectionId: string
     });
 
     return { class: cls, entries };
+  });
+}
+
+export type ClassDiaryFeed = {
+  class: { id: string; name: string };
+  entries: DiaryListEntry[];
+};
+
+/**
+ * Recent diary entries grouped by class (teacher/head overview). A HEAD sees
+ * every class; a TEACHER only the classes they're assigned to. Each class keeps
+ * its newest entries (up to CLASS_OVERVIEW_LIMIT). Classes with no entries are
+ * still returned, so the overview can render one box per class.
+ */
+export async function listDiaryByClass(): Promise<ClassDiaryFeed[]> {
+  const { user, schoolId } = await requireSchool();
+  return withTenant(schoolId, async (tx) => {
+    const classes = await tx.class.findMany({
+      where:
+        user.role === "TEACHER" ? { teacherAssignments: { some: { teacherId: user.id } } } : {},
+      orderBy: [{ level: "asc" }, { name: "asc" }],
+      select: { id: true, name: true },
+    });
+    if (classes.length === 0) return [];
+
+    const classIds = classes.map((c) => c.id);
+    const entries = await tx.diaryEntry.findMany({
+      where: { classId: { in: classIds } },
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        type: true,
+        date: true,
+        dueDate: true,
+        title: true,
+        content: true,
+        classId: true,
+        subject: { select: { name: true } },
+        section: { select: { name: true } },
+        createdBy: { select: { name: true } },
+      },
+    });
+
+    const byClass = new Map<string, DiaryListEntry[]>();
+    for (const entry of entries) {
+      const list = byClass.get(entry.classId) ?? [];
+      if (list.length < CLASS_OVERVIEW_LIMIT) list.push(entry);
+      byClass.set(entry.classId, list);
+    }
+
+    return classes.map((c) => ({ class: c, entries: byClass.get(c.id) ?? [] }));
   });
 }
 
