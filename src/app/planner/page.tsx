@@ -118,10 +118,21 @@ async function HeadRegister({
     }),
   ]);
 
+  // Group the register entries under the teacher who owns them.
+  const byTeacher = new Map<string, PlannerListEntry[]>();
+  for (const entry of register) {
+    const list = byTeacher.get(entry.teacher.id) ?? [];
+    list.push(entry);
+    byTeacher.set(entry.teacher.id, list);
+  }
+
+  // One box per teacher; narrow to a single teacher when one is selected.
+  const shown = teacherId ? teachers.filter((t) => t.id === teacherId) : teachers;
+
   return (
     <div className="space-y-4">
       <p className="text-muted-foreground text-sm">
-        The lesson-plan register across all teachers. Filter by teacher or date range.
+        The lesson-plan register, one box per teacher. Filter by teacher or date range.
       </p>
       <DateFilter
         from={from}
@@ -129,7 +140,71 @@ async function HeadRegister({
         teacherId={teacherId}
         teachers={teachers.map((t) => ({ id: t.id, name: t.name }))}
       />
-      <PlannerList entries={register} showTeacher canToggle={false} />
+
+      {shown.length === 0 ? (
+        <p className="text-muted-foreground text-sm">No teachers yet.</p>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {shown.map((t) => (
+            <TeacherPlannerBox key={t.id} name={t.name} entries={byTeacher.get(t.id) ?? []} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A HEAD's per-teacher box: the teacher's name and their plans in the range. */
+function TeacherPlannerBox({ name, entries }: { name: string; entries: PlannerListEntry[] }) {
+  return (
+    <Card className="h-full">
+      <CardHeader>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-base">{name}</CardTitle>
+          <Badge variant="secondary">
+            {entries.length} {entries.length === 1 ? "plan" : "plans"}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {entries.length === 0 ? (
+          <p className="text-muted-foreground text-sm">No plans in this range.</p>
+        ) : (
+          <ul className="divide-border divide-y">
+            {entries.map((entry) => (
+              <li key={entry.id} className="py-3 first:pt-0 last:pb-0">
+                <PlannerEntryItem entry={entry} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** A compact plan inside a teacher box (no nested Card). The HEAD may delete it. */
+function PlannerEntryItem({ entry }: { entry: PlannerListEntry }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 space-y-1">
+          <p className="font-medium">{entry.topic}</p>
+          <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
+            {statusBadge(entry.status)}
+            <span>{entry.class.name}</span>
+            <span>{entry.subject.name}</span>
+            <span>{formatDay(entry.date)}</span>
+          </div>
+        </div>
+        <DeleteButton action={deletePlannerEntryAction} id={entry.id} label={entry.topic} />
+      </div>
+      <p className="text-sm whitespace-pre-wrap">{entry.details}</p>
+      {entry.homework ? (
+        <p className="text-muted-foreground text-sm">
+          <span className="font-medium">Homework:</span> {entry.homework}
+        </p>
+      ) : null}
     </div>
   );
 }

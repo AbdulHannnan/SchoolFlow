@@ -103,7 +103,7 @@ export type PlannerListEntry = {
   status: PlannerStatus;
   class: { name: string };
   subject: { name: string };
-  teacher: { name: string };
+  teacher: { id: string; name: string };
 };
 
 /** Half-open day range [from, to+1day) covering the inclusive `from..to` days. */
@@ -131,7 +131,7 @@ export async function listMyPlanner(input: { from: Date; to: Date }) {
         status: true,
         class: { select: { name: true } },
         subject: { select: { name: true } },
-        teacher: { select: { name: true } },
+        teacher: { select: { id: true, name: true } },
       },
     }),
   );
@@ -165,7 +165,7 @@ export async function listPlannerRegister(input: {
         status: true,
         class: { select: { name: true } },
         subject: { select: { name: true } },
-        teacher: { select: { name: true } },
+        teacher: { select: { id: true, name: true } },
       },
     }),
   );
