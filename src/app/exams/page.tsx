@@ -1,132 +1,120 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { forbidden } from "next/navigation";
+import { ClipboardList, FileText } from "lucide-react";
 import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ExamClassPicker } from "@/components/academics/exam-class-picker";
-import { DeleteButton } from "@/components/academics/delete-button";
-import { deleteExamAction } from "@/app/exams/actions";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { verifySession } from "@/server/auth/dal";
-import { listMarkableClasses } from "@/server/academics/attendance";
-import { listChildrenExams, listExams } from "@/server/academics/exams";
+import { listChildrenExams } from "@/server/academics/exams";
+import { countExamPapersByStatus } from "@/server/academics/exam-papers";
 import { formatDay } from "@/lib/attendance";
 import { EXAM_TYPE_LABELS } from "@/lib/grades";
 
 export const metadata: Metadata = {
-  title: "Exams & Grades - School Management",
+  title: "Exams - School Management",
 };
 
-type SearchParams = Promise<{ classId?: string }>;
+// The landing is entirely per-user (session role + the HEAD's paper counts) and
+// has no URL data to key a prerender on, so render it on demand rather than
+// prerendering a static shell for instant navigation. See the Cache Components
+// notes; same reason the `[examId]` pages set this.
+export const instant = false;
 
-export default function ExamsPage({ searchParams }: { searchParams: SearchParams }) {
+export default function ExamsPage() {
   return (
-    <AppShell title="Exams & Grades">
+    <AppShell title="Exams">
       <Suspense fallback={<div className="bg-muted h-64 animate-pulse rounded-xl" />}>
-        <ExamsContent searchParams={searchParams} />
+        <ExamsContent />
       </Suspense>
     </AppShell>
   );
 }
 
-async function ExamsContent({ searchParams }: { searchParams: SearchParams }) {
+async function ExamsContent() {
   const user = await verifySession();
-
   if (user.role === "PARENT") return <ParentExams />;
   if (user.role !== "TEACHER" && user.role !== "HEAD") forbidden();
+  return <StaffExamBlocks isHead={user.role === "HEAD"} />;
+}
 
-  const sp = await searchParams;
-  const classes = await listMarkableClasses();
-
-  if (classes.length === 0) {
-    return (
-      <p className="text-muted-foreground text-sm">
-        You have no classes yet. A head can add classes and assign you to one.
-      </p>
-    );
-  }
-
-  const selectedClass = classes.find((c) => c.id === sp.classId) ?? null;
-  const data = selectedClass ? await listExams(selectedClass.id) : null;
-  const isHead = user.role === "HEAD";
+async function StaffExamBlocks({ isHead }: { isHead: boolean }) {
+  // Only the HEAD gets the review backlog figure on the Papers block.
+  const counts = isHead ? await countExamPapersByStatus() : null;
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Choose a class</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ExamClassPicker
-            classes={classes.map((c) => ({ id: c.id, name: c.name }))}
-            selectedClassId={selectedClass?.id ?? ""}
-          />
-        </CardContent>
-      </Card>
-
-      {!selectedClass || !data ? (
-        <p className="text-muted-foreground text-sm">Pick a class above to see its exams.</p>
-      ) : (
-        <section className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-medium">Exams for {selectedClass.name}</h2>
-            {isHead ? (
-              <Button asChild size="sm">
-                <Link href={`/exams/new?classId=${encodeURIComponent(selectedClass.id)}`}>
-                  Create exam
-                </Link>
-              </Button>
-            ) : null}
-          </div>
-
-          {data.exams.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No exams for this class yet.</p>
-          ) : (
-            <ul className="space-y-3">
-              {data.exams.map((exam) => (
-                <li key={exam.id}>
-                  <Card>
-                    <CardHeader>
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div className="space-y-1">
-                          <CardTitle className="text-base">
-                            <Link href={`/exams/${exam.id}`} className="hover:underline">
-                              {exam.name}
-                            </Link>
-                          </CardTitle>
-                          <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
-                            <Badge variant="secondary">{EXAM_TYPE_LABELS[exam.type]}</Badge>
-                            {exam.term ? <span>{exam.term}</span> : null}
-                            {exam.startDate ? <span>{formatDay(exam.startDate)}</span> : null}
-                            <span>
-                              {exam.paperCount} {exam.paperCount === 1 ? "subject" : "subjects"}
-                            </span>
-                            <Badge variant={exam.isPublished ? "default" : "outline"}>
-                              {exam.isPublished ? "Published" : "Draft"}
-                            </Badge>
-                          </div>
-                        </div>
-                        {isHead ? (
-                          <DeleteButton action={deleteExamAction} id={exam.id} label={exam.name} />
-                        ) : null}
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <Button asChild size="sm" variant="secondary">
-                        <Link href={`/exams/${exam.id}`}>Open</Link>
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
+    <div className="space-y-4">
+      <p className="text-muted-foreground text-sm">
+        {isHead
+          ? "Review question papers before each exam, and open the marks register for a class."
+          : "Submit your question papers for review, and enter marks for your classes."}
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <ExamBlock
+          href="/exams/papers"
+          icon={<FileText className="text-muted-foreground size-5" />}
+          title="Papers"
+          description={
+            isHead
+              ? "Question papers teachers submit ahead of each exam, for you to review."
+              : "Submit a question paper before the exam and track the head's review."
+          }
+          footer={
+            counts ? (
+              <div className="flex flex-wrap gap-2">
+                <Badge variant={counts.submitted > 0 ? "default" : "outline"}>
+                  {counts.submitted} awaiting review
+                </Badge>
+                {counts.changesRequested > 0 ? (
+                  <Badge variant="secondary">{counts.changesRequested} with changes</Badge>
+                ) : null}
+              </div>
+            ) : null
+          }
+        />
+        <ExamBlock
+          href="/exams/marks"
+          icon={<ClipboardList className="text-muted-foreground size-5" />}
+          title="Marks"
+          description="Exams, grade entry and report cards, filtered by class and year."
+        />
+      </div>
     </div>
+  );
+}
+
+function ExamBlock({
+  href,
+  icon,
+  title,
+  description,
+  footer,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  footer?: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="focus-visible:ring-ring rounded-xl focus-visible:ring-2 focus-visible:outline-none"
+    >
+      <Card className="hover:border-primary/50 hover:bg-accent/40 h-full transition-colors">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            {icon}
+            <CardTitle>{title}</CardTitle>
+          </div>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        {footer ? <CardContent>{footer}</CardContent> : null}
+      </Card>
+    </Link>
   );
 }
 

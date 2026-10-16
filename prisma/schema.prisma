@@ -33,13 +33,13 @@ model School {
   address  String?
   isActive Boolean @default(true)
 
-  users              User[]
-  classes            Class[]
-  sections           Section[]
-  subjects           Subject[]
-  teacherAssignments TeacherAssignment[]
-  students           Student[]
-  parentStudents     ParentStudent[]
+  users                  User[]
+  classes                Class[]
+  sections               Section[]
+  subjects               Subject[]
+  teacherAssignments     TeacherAssignment[]
+  students               Student[]
+  parentStudents         ParentStudent[]
   attendance             Attendance[]
   notifications          Notification[]
   pushSubscriptions      PushSubscription[]
@@ -59,6 +59,7 @@ model School {
   plannerEntries         PlannerEntry[]
   meetings               Meeting[]
   meetingInvitees        MeetingInvitee[]
+  examPapers             ExamPaper[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -88,46 +89,48 @@ enum Role {
 /// above any single tenant. Email is unique *per school* (compound unique),
 /// so the same address can belong to a parent at two different schools.
 model User {
-  id           String  @id @default(cuid())
-  schoolId     String?
-  school       School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  email        String
-  passwordHash String
-  name         String
+  id            String   @id @default(cuid())
+  schoolId      String?
+  school        School?  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  email         String
+  passwordHash  String
+  name          String
   /// Contact number in E.164 form (e.g. "923001234567"), used by the WhatsApp
   /// notification channel (Module 4.3). Optional: not every account has one.
-  phone        String?
+  phone         String?
   /// National ID (Pakistani CNIC), 13 digits stored normalized. Used for
   /// parents/guardians; optional and null for other roles.
-  cnic         String?
-  role         Role
-  isActive     Boolean @default(true)
+  cnic          String?
+  role          Role
+  isActive      Boolean  @default(true)
   /// A teacher's main (primary) subject - the subject they were hired for.
   /// Single-column SetNull FK (audit-style), re-checked in-tenant like
   /// Class.classTeacher. Null for non-teachers.
   mainSubjectId String?
   mainSubject   Subject? @relation("TeacherMainSubject", fields: [mainSubjectId], references: [id], onDelete: SetNull)
 
-  teacherAssignments TeacherAssignment[]
-  classesLed         Class[]             @relation("ClassTeacher")
-  sectionsLed        Section[]           @relation("SectionTeacher")
-  timetable          TimetableEntry[]
-  parentLinks        ParentStudent[]
-  attendanceMarked   Attendance[]
+  teacherAssignments     TeacherAssignment[]
+  classesLed             Class[]                 @relation("ClassTeacher")
+  sectionsLed            Section[]               @relation("SectionTeacher")
+  timetable              TimetableEntry[]
+  parentLinks            ParentStudent[]
+  attendanceMarked       Attendance[]
   // Staff attendance where this user is the staff member, and (separately) the
   // rows this user marked as HEAD. Two relations to the same table.
-  staffAttendance        StaffAttendance[] @relation("StaffAttendanceStaff")
-  staffAttendanceMarked  StaffAttendance[] @relation("StaffAttendanceMarker")
-  plannerEntries     PlannerEntry[]
-  meetingsCreated    Meeting[]
-  meetingInvites     MeetingInvitee[]
-  notifications      Notification[]
-  pushSubscriptions  PushSubscription[]
+  staffAttendance        StaffAttendance[]       @relation("StaffAttendanceStaff")
+  staffAttendanceMarked  StaffAttendance[]       @relation("StaffAttendanceMarker")
+  plannerEntries         PlannerEntry[]
+  meetingsCreated        Meeting[]
+  meetingInvites         MeetingInvitee[]
+  notifications          Notification[]
+  pushSubscriptions      PushSubscription[]
   scheduledNotifications ScheduledNotification[]
-  diaryEntries       DiaryEntry[]
-  paymentsRecorded   Payment[]
-  examResultsRecorded ExamResult[]
-  redFlagsResolved   RedFlag[]
+  diaryEntries           DiaryEntry[]
+  paymentsRecorded       Payment[]
+  examResultsRecorded    ExamResult[]
+  examPapers             ExamPaper[]             @relation("ExamPaperTeacher")
+  examPapersReviewed     ExamPaper[]             @relation("ExamPaperReviewer")
+  redFlagsResolved       RedFlag[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -143,11 +146,11 @@ model User {
 /// ordering for display and for academic-year promotion later (Module 10.4).
 /// Tenant-scoped: RLS pins every row to one school (see the enable_rls_* migration).
 model Class {
-  id       String @id @default(cuid())
-  schoolId String
-  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  name     String
-  level    Int?
+  id             String  @id @default(cuid())
+  schoolId       String
+  school         School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name           String
+  level          Int?
   /// The class (homeroom) teacher - the single teacher in charge of this class,
   /// distinct from the per-subject `teacherAssignments`. Optional. A single-
   /// column SetNull FK (audit-style): composite SetNull would force `schoolId`
@@ -167,6 +170,7 @@ model Class {
   feeStructures      FeeStructure[]
   invoices           Invoice[]
   exams              Exam[]
+  examPapers         ExamPaper[]
   timetableEntries   TimetableEntry[]
   plannerEntries     PlannerEntry[]
 
@@ -183,13 +187,13 @@ model Class {
 /// A section/division of a Class (e.g. "A", "B"). `schoolId` is denormalized
 /// from the parent Class so this table can carry its own RLS policy.
 model Section {
-  id       String @id @default(cuid())
-  schoolId String
-  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  classId  String
+  id               String  @id @default(cuid())
+  schoolId         String
+  school           School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId          String
   // Composite FK: the parent class must belong to the same school.
-  class    Class  @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
-  name     String
+  class            Class   @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
+  name             String
   /// The section's teacher (section in-charge), distinct from the class's main
   /// teacher. Optional. A single-column SetNull FK like `Class.classTeacher`:
   /// composite SetNull would force `schoolId` NULL, so tenant-safety is re-
@@ -217,24 +221,24 @@ model Section {
 /// Composite FKs keep class/section in the same school; the service also checks
 /// the section belongs to the chosen class.
 model Student {
-  id          String    @id @default(cuid())
-  schoolId    String
-  school      School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  classId     String
-  class       Class     @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
-  sectionId   String?
-  section     Section?  @relation(fields: [schoolId, sectionId], references: [schoolId, id], onDelete: NoAction)
-  name        String
-  rollNumber  String?
+  id            String    @id @default(cuid())
+  schoolId      String
+  school        School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId       String
+  class         Class     @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
+  sectionId     String?
+  section       Section?  @relation(fields: [schoolId, sectionId], references: [schoolId, id], onDelete: NoAction)
+  name          String
+  rollNumber    String?
   /// Guardian details. `fatherCnic` is the Pakistani CNIC (13 digits, stored
   /// normalized without dashes). Both optional.
-  fatherName  String?
-  fatherCnic  String?
-  gender      Gender?
-  dateOfBirth DateTime? @db.Date
+  fatherName    String?
+  fatherCnic    String?
+  gender        Gender?
+  dateOfBirth   DateTime? @db.Date
   /// When the student was admitted to the school. Optional; a date-only value.
   admissionDate DateTime? @db.Date
-  isActive    Boolean   @default(true)
+  isActive      Boolean   @default(true)
 
   parentLinks ParentStudent[]
   attendance  Attendance[]
@@ -306,6 +310,7 @@ model Subject {
   teacherAssignments TeacherAssignment[]
   diaryEntries       DiaryEntry[]
   examSubjects       ExamSubject[]
+  examPapers         ExamPaper[]
   timetableEntries   TimetableEntry[]
   plannerEntries     PlannerEntry[]
   mainForTeachers    User[]              @relation("TeacherMainSubject")
@@ -903,6 +908,58 @@ model ExamResult {
   @@map("exam_results")
 }
 
+/// A question paper a TEACHER submits for a HEAD to review ahead of an exam
+/// (Module 7). Standalone - it carries its own `classId`, `subjectId` and
+/// `examDate`, so a paper can be submitted before any Exam record exists and
+/// isn't tied to the marks tables. The paper itself is an external `fileUrl`
+/// (a Drive/OneDrive link); the app stores no files. Review is a short loop:
+/// SUBMITTED -> APPROVED or CHANGES_REQUESTED, with an optional `reviewNote`
+/// the teacher sees. `reviewedById` is the HEAD who acted - a single-column
+/// SetNull audit FK (like Meeting.createdById), so the paper survives if that
+/// account is removed. Teacher/class/subject use composite FKs so all three
+/// stay in one school (class cascades, subject NoAction to preserve history).
+/// Tenant-scoped via RLS.
+model ExamPaper {
+  id           String          @id @default(cuid())
+  schoolId     String
+  school       School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacherId    String
+  teacher      User            @relation("ExamPaperTeacher", fields: [schoolId, teacherId], references: [schoolId, id], onDelete: Cascade)
+  classId      String
+  class        Class           @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
+  subjectId    String
+  subject      Subject         @relation(fields: [schoolId, subjectId], references: [schoolId, id], onDelete: NoAction)
+  title        String
+  examDate     DateTime        @db.Date
+  fileUrl      String
+  notes        String?
+  status       ExamPaperStatus @default(SUBMITTED)
+  reviewNote   String?
+  reviewedById String?
+  reviewedBy   User?           @relation("ExamPaperReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId])
+  @@index([schoolId, status])
+  @@index([teacherId])
+  @@index([classId])
+  @@map("exam_papers")
+}
+
+/// An exam paper's review state (Module 7): SUBMITTED by the teacher until a
+/// HEAD either APPROVES it or asks for changes (CHANGES_REQUESTED, usually with
+/// a note). A teacher may revise and re-submit while it isn't approved.
+enum ExamPaperStatus {
+  SUBMITTED
+  APPROVED
+  CHANGES_REQUESTED
+
+  @@map("exam_paper_status")
+}
+
 /// An at-risk indicator raised for a student (Module 7.3) when a rule crosses a
 /// threshold — low attendance in a month, or weak results in a published exam.
 /// A HEAD-triggered scan evaluates the rules and upserts flags; `key` makes a
@@ -992,11 +1049,11 @@ model Notification {
 /// SDK. Tenant-scoped via RLS with a composite FK to the owning user. Dead
 /// tokens are pruned by the channel when FCM reports them unregistered.
 model PushSubscription {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   schoolId    String
-  school      School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school      School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   recipientId String
-  recipient   User   @relation(fields: [schoolId, recipientId], references: [schoolId, id], onDelete: Cascade)
+  recipient   User    @relation(fields: [schoolId, recipientId], references: [schoolId, id], onDelete: Cascade)
   token       String
   userAgent   String?
 

@@ -124,8 +124,17 @@ export async function createExam(input: CreateExamInput) {
   });
 }
 
-/** Exams for a class, newest first (HEAD any / TEACHER assigned). */
-export async function listExams(classId: string) {
+/** The academic year an exam belongs to: its start date, else when it was created. */
+function examYear(e: { startDate: Date | null; createdAt: Date }): number {
+  return (e.startDate ?? e.createdAt).getUTCFullYear();
+}
+
+/**
+ * Exams for a class, newest first (HEAD any / TEACHER assigned), optionally
+ * narrowed to one calendar `year` (from the exam's start date, else created
+ * date). Also returns every year that has an exam, for the year filter.
+ */
+export async function listExams(classId: string, year?: number | null) {
   const { user, schoolId } = await requireSchool();
   return withTenant(schoolId, async (tx) => {
     const cls = await tx.class.findUnique({
@@ -144,19 +153,25 @@ export async function listExams(classId: string) {
         type: true,
         term: true,
         startDate: true,
+        createdAt: true,
         isPublished: true,
         _count: { select: { subjects: true } },
       },
     });
 
+    const years = [...new Set(exams.map(examYear))].sort((a, b) => b - a);
+    const shown = year != null ? exams.filter((e) => examYear(e) === year) : exams;
+
     return {
       class: cls,
-      exams: exams.map((e) => ({
+      years,
+      exams: shown.map((e) => ({
         id: e.id,
         name: e.name,
         type: e.type,
         term: e.term,
         startDate: e.startDate,
+        year: examYear(e),
         isPublished: e.isPublished,
         paperCount: e._count.subjects,
       })),
