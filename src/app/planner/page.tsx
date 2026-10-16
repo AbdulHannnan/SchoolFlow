@@ -10,8 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addBoxClass } from "@/components/ui/add-box";
-import { cn } from "@/lib/utils";
 import { PlannerForm } from "@/components/academics/planner-form";
+import { PlannerFilter } from "@/components/academics/planner-filter";
 import { PlannerStatusToggle } from "@/components/academics/planner-status-toggle";
 import { DeleteButton } from "@/components/academics/delete-button";
 import { deletePlannerEntryAction } from "@/app/planner/actions";
@@ -30,7 +30,13 @@ export const metadata: Metadata = {
   title: "Planner - School Management",
 };
 
-type SearchParams = Promise<{ from?: string; to?: string; teacherId?: string }>;
+type SearchParams = Promise<{
+  from?: string;
+  to?: string;
+  date?: string;
+  mode?: string;
+  teacherId?: string;
+}>;
 
 export default function PlannerPage({ searchParams }: { searchParams: SearchParams }) {
   return (
@@ -50,13 +56,31 @@ async function PlannerContent({ searchParams }: { searchParams: SearchParams }) 
 
   const sp = await searchParams;
   const week = presetRange("week");
-  const from = isISODate(sp.from) ? sp.from : week.from;
-  const to = isISODate(sp.to) ? sp.to : week.to;
+  const today = todayISODate();
 
   if (user.role === "TEACHER") {
+    const from = isISODate(sp.from) ? sp.from : week.from;
+    const to = isISODate(sp.to) ? sp.to : week.to;
     return <TeacherPlanner from={from} to={to} />;
   }
-  return <HeadRegister from={from} to={to} teacherId={sp.teacherId ?? ""} />;
+
+  // HEAD: choose the date filter via a mode switcher - a from/to range or a
+  // single day. In day mode the register spans just that one date (from == to).
+  const mode = sp.mode === "day" ? "day" : "range";
+  const day = isISODate(sp.date) ? sp.date : today;
+  const from = mode === "day" ? day : isISODate(sp.from) ? sp.from : week.from;
+  const to = mode === "day" ? day : isISODate(sp.to) ? sp.to : week.to;
+
+  return (
+    <HeadRegister
+      mode={mode}
+      from={from}
+      to={to}
+      date={day}
+      today={today}
+      teacherId={sp.teacherId ?? ""}
+    />
+  );
 }
 
 async function TeacherPlanner({ from, to }: { from: string; to: string }) {
@@ -101,12 +125,18 @@ async function TeacherPlanner({ from, to }: { from: string; to: string }) {
 }
 
 async function HeadRegister({
+  mode,
   from,
   to,
+  date,
+  today,
   teacherId,
 }: {
+  mode: "range" | "day";
   from: string;
   to: string;
+  date: string;
+  today: string;
   teacherId: string;
 }) {
   const [teachers, register] = await Promise.all([
@@ -132,11 +162,15 @@ async function HeadRegister({
   return (
     <div className="space-y-4">
       <p className="text-muted-foreground text-sm">
-        The lesson-plan register, one box per teacher. Filter by teacher or date range.
+        The lesson-plan register, one box per teacher. Filter by teacher, and by a date range or a
+        single day.
       </p>
-      <DateFilter
+      <PlannerFilter
+        mode={mode}
         from={from}
         to={to}
+        date={date}
+        today={today}
         teacherId={teacherId}
         teachers={teachers.map((t) => ({ id: t.id, name: t.name }))}
       />
@@ -209,44 +243,10 @@ function PlannerEntryItem({ entry }: { entry: PlannerListEntry }) {
   );
 }
 
-/** A server-rendered GET filter: date range, plus a teacher picker for the HEAD. */
-function DateFilter({
-  from,
-  to,
-  teacherId,
-  teachers,
-}: {
-  from: string;
-  to: string;
-  teacherId?: string;
-  teachers?: { id: string; name: string }[];
-}) {
-  const selectClass = cn(
-    "border-input dark:bg-input/30 h-9 w-full rounded-md border bg-transparent px-2 text-sm shadow-xs outline-none",
-    "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-  );
+/** The teacher's GET date-range filter for their own planner. */
+function DateFilter({ from, to }: { from: string; to: string }) {
   return (
     <form method="get" className="flex flex-wrap items-end gap-3">
-      {teachers ? (
-        <div className="space-y-1">
-          <Label htmlFor="planner-teacher" className="text-xs">
-            Teacher
-          </Label>
-          <select
-            id="planner-teacher"
-            name="teacherId"
-            defaultValue={teacherId ?? ""}
-            className={cn(selectClass, "w-44")}
-          >
-            <option value="">All teachers</option>
-            {teachers.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      ) : null}
       <div className="space-y-1">
         <Label htmlFor="planner-from" className="text-xs">
           From
