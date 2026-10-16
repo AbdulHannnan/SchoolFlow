@@ -93,10 +93,10 @@ export function CreateMeetingForm({
           <Label>Invite teachers</Label>
           {teachers.length > 0 ? (
             <div className="flex gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setAll(true)}>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setAll(true)}>
                 All
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => setAll(false)}>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setAll(false)}>
                 None
               </Button>
             </div>
