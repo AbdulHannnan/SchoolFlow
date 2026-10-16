@@ -53,9 +53,12 @@ async function InvoicesContent({ searchParams }: { searchParams: SearchParams })
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button asChild variant="outline" size="sm">
-          <Link href="/fees">Fee structure</Link>
+          <Link href="/fees">Fees overview</Link>
+        </Button>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/fees/structure">Fee structure</Link>
         </Button>
       </div>
 

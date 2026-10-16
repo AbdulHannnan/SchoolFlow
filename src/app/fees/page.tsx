@@ -4,133 +4,226 @@ import { forbidden } from "next/navigation";
 import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { addBoxClass } from "@/components/ui/add-box";
-import { CreateFeeCategoryForm } from "@/components/fees/create-fee-category-form";
-import { CreateFeeStructureForm } from "@/components/fees/create-fee-structure-form";
-import { DeleteButton } from "@/components/academics/delete-button";
-import { deleteFeeCategoryAction, deleteFeeStructureAction } from "@/app/fees/actions";
 import { verifySession } from "@/server/auth/dal";
 import { listClassesWithSections } from "@/server/academics/classes";
-import { listFeeCategories, listFeeStructures } from "@/server/fees/structure";
 import { listChildrenLedgerSummaries } from "@/server/fees/invoices";
-import { FEE_FREQUENCY_LABELS, formatPKR } from "@/lib/money";
+import { listCategorySummaries } from "@/server/fees/category-report";
+import { currentMonth, monthLabel } from "@/lib/attendance";
+import { formatPKR } from "@/lib/money";
 
 export const metadata: Metadata = {
   title: "Fees - School Management",
 };
 
-export default function FeesPage() {
+type SearchParams = Promise<{ classId?: string; period?: string }>;
+
+export default function FeesPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <AppShell title="Fees">
       <Suspense fallback={<div className="bg-muted h-64 animate-pulse rounded-xl" />}>
-        <FeesContent />
+        <FeesContent searchParams={searchParams} />
       </Suspense>
     </AppShell>
   );
 }
 
-async function FeesContent() {
+async function FeesContent({ searchParams }: { searchParams: SearchParams }) {
   const user = await verifySession();
   if (user.role === "PARENT") return <ParentFees />;
   if (user.role !== "HEAD") forbidden();
-  return <FeeStructureAdmin />;
+  return <FeeHeadOverview searchParams={searchParams} />;
 }
 
-async function FeeStructureAdmin() {
-  const [categories, classes, structures] = await Promise.all([
-    listFeeCategories(),
-    listClassesWithSections(),
-    listFeeStructures(),
-  ]);
-  const classOptions = classes.map((c) => ({ id: c.id, name: c.name }));
+/**
+ * Resolve the `period` query param: absent -> current month (a sensible default
+ * so the boxes show live figures), an empty string -> all months, a valid
+ * "YYYY-MM" -> that month, anything else -> all months.
+ */
+function resolvePeriod(raw: string | undefined): string | null {
+  if (raw === undefined) return currentMonth();
+  return /^\d{4}-\d{2}$/.test(raw) ? raw : null;
+}
+
+/** A query string that carries the active filter onward to a category page. */
+function filterQuery(period: string | null, classId: string | null): string {
+  const p = new URLSearchParams();
+  p.set("period", period ?? ""); // always explicit, so "all months" is preserved
+  if (classId) p.set("classId", classId);
+  return `?${p.toString()}`;
+}
+
+async function FeeHeadOverview({ searchParams }: { searchParams: SearchParams }) {
+  const sp = await searchParams;
+  const classes = await listClassesWithSections();
+  const classId = classes.some((c) => c.id === sp.classId) ? sp.classId! : null;
+  const period = resolvePeriod(sp.period);
+
+  const summaries = await listCategorySummaries({ period, classId });
+
+  const totals = summaries.reduce(
+    (acc, s) => ({
+      billed: acc.billed + Number(s.billed),
+      collected: acc.collected + Number(s.collected),
+      outstanding: acc.outstanding + Number(s.outstanding),
+    }),
+    { billed: 0, collected: 0, outstanding: 0 },
+  );
+
+  const query = filterQuery(period, classId);
+  const scope = period ? monthLabel(period) : "all months";
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button asChild variant="outline" size="sm">
+          <Link href="/fees/structure">Manage fees</Link>
+        </Button>
         <Button asChild variant="outline" size="sm">
           <Link href="/fees/invoices">Invoices</Link>
         </Button>
       </div>
 
+      <FeeFilterCard classes={classes} period={period} classId={classId} />
+
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Fee categories</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <CreateFeeCategoryForm />
-          {categories.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2">
-              {categories.map((c) => (
-                <Badge key={c.id} variant="secondary" className="gap-1 pr-1">
-                  {c.name}
-                  <DeleteButton
-                    action={deleteFeeCategoryAction}
-                    id={c.id}
-                    label={`category ${c.name}`}
-                  />
-                </Badge>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              No categories yet. Add one (e.g. Tuition) to start defining fees.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className={addBoxClass}>
-        <CardHeader>
-          <CardTitle className="text-base">Add a fee</CardTitle>
+          <CardTitle className="text-base">
+            Totals
+            <span className="text-muted-foreground ml-2 text-sm font-normal">{scope}</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {categories.length === 0 ? (
-            <p className="text-muted-foreground text-sm">Add a category first.</p>
-          ) : (
-            <CreateFeeStructureForm categories={categories} classes={classOptions} />
-          )}
+          <div className="grid grid-cols-3 gap-4 text-sm">
+            <SummaryStat label="Billed" value={totals.billed} />
+            <SummaryStat label="Collected" value={totals.collected} />
+            <SummaryStat label="Outstanding" value={totals.outstanding} danger />
+          </div>
         </CardContent>
       </Card>
 
-      {structures.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">
-              {structures.length} {structures.length === 1 ? "fee" : "fees"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="divide-border divide-y">
-              {structures.map((fee) => (
-                <li key={fee.id} className="flex items-center justify-between gap-3 py-3">
-                  <div className="min-w-0 space-y-1">
-                    <p className="text-sm font-medium">
-                      {formatPKR(fee.amount)}
-                      <span className="text-muted-foreground ml-2 font-normal">
-                        {FEE_FREQUENCY_LABELS[fee.frequency]}
-                      </span>
-                    </p>
-                    <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
-                      <Badge variant="outline">{fee.category.name}</Badge>
-                      <span>{fee.class ? fee.class.name : "All classes"}</span>
-                      {fee.label ? <span>- {fee.label}</span> : null}
-                    </div>
+      {summaries.length === 0 ? (
+        <p className="text-muted-foreground text-sm">
+          No fee categories yet.{" "}
+          <Link href="/fees/structure" className="underline">
+            Add one
+          </Link>{" "}
+          (e.g. Admission, Tuition, Fines) to organise fees.
+        </p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {summaries.map((c) => (
+            <Link
+              key={c.id}
+              href={`/fees/category/${c.id}${query}`}
+              className="focus-visible:ring-ring rounded-xl focus-visible:ring-2 focus-visible:outline-none"
+            >
+              <Card className="hover:border-primary/50 hover:bg-accent/40 h-full transition-colors">
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="text-base">{c.name}</CardTitle>
+                    <span className="text-muted-foreground text-xs">
+                      {c.studentCount} {c.studentCount === 1 ? "student" : "students"}
+                    </span>
                   </div>
-                  <DeleteButton
-                    action={deleteFeeStructureAction}
-                    id={fee.id}
-                    label={fee.label ?? `${fee.category.name} fee`}
-                  />
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      ) : null}
+                </CardHeader>
+                <CardContent className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Billed</span>
+                    <span className="font-medium">{formatPKR(c.billed)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Collected</span>
+                    <span className="font-medium">{formatPKR(c.collected)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Outstanding</span>
+                    <span
+                      className={`font-medium ${Number(c.outstanding) > 0 ? "text-destructive" : ""}`}
+                    >
+                      {formatPKR(c.outstanding)}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  danger,
+}: {
+  label: string;
+  value: number;
+  danger?: boolean;
+}) {
+  return (
+    <div>
+      <p className="text-muted-foreground text-xs">{label}</p>
+      <p className={`font-medium ${danger && value > 0 ? "text-destructive" : ""}`}>
+        {formatPKR(value)}
+      </p>
+    </div>
+  );
+}
+
+/** Plain GET form: filters via the URL, no client JS. Shared shape with the category page. */
+function FeeFilterCard({
+  classes,
+  period,
+  classId,
+}: {
+  classes: { id: string; name: string }[];
+  period: string | null;
+  classId: string | null;
+}) {
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <form method="get" className="flex flex-wrap items-end gap-2">
+          <div className="space-y-1">
+            <label htmlFor="period" className="text-muted-foreground text-xs">
+              Billing month
+            </label>
+            <input
+              id="period"
+              type="month"
+              name="period"
+              defaultValue={period ?? ""}
+              className="border-input dark:bg-input/30 h-9 rounded-md border bg-transparent px-2 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="classId" className="text-muted-foreground text-xs">
+              Class
+            </label>
+            <select
+              id="classId"
+              name="classId"
+              defaultValue={classId ?? ""}
+              className="border-input dark:bg-input/30 h-9 rounded-md border bg-transparent px-2 text-sm"
+            >
+              <option value="">All classes</option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button type="submit" variant="outline" size="sm">
+            Filter
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
 
