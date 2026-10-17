@@ -49,7 +49,7 @@ export const navItems: NavItem[] = [
   { title: "Meetings", href: "/meetings", icon: CalendarClock, description: "Staff meetings and invites", module: "8.3", ready: true }, // prettier-ignore
   { title: "Homework", href: "/homework", icon: NotebookPen, description: "Daily diary and homework", module: "5", ready: true }, // prettier-ignore
   { title: "Exams", href: "/exams", icon: ClipboardList, description: "Exams, grades and report cards", module: "7", ready: true }, // prettier-ignore
-  { title: "Progress", href: "/progress", icon: TrendingUp, description: "Student progress dashboards", module: "7.4", ready: true }, // prettier-ignore
+  { title: "Progress", href: "/progress", icon: TrendingUp, description: "Class and student progress", module: "7.4", ready: true }, // prettier-ignore
   { title: "Red Flags", href: "/red-flags", icon: TriangleAlert, description: "At-risk alerts and rules", module: "7.3", ready: true }, // prettier-ignore
   { title: "Fees", href: "/fees", icon: Wallet, description: "Invoices, payments and reminders", module: "6", ready: true }, // prettier-ignore
   { title: "Notifications", href: "/notifications", icon: Bell, description: "Alerts and messages", module: "4", ready: true }, // prettier-ignore

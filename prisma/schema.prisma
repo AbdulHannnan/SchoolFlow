@@ -60,6 +60,7 @@ model School {
   meetings               Meeting[]
   meetingInvitees        MeetingInvitee[]
   examPapers             ExamPaper[]
+  classNotes             ClassNote[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -131,6 +132,7 @@ model User {
   examPapers             ExamPaper[]             @relation("ExamPaperTeacher")
   examPapersReviewed     ExamPaper[]             @relation("ExamPaperReviewer")
   redFlagsResolved       RedFlag[]
+  classNotesCreated      ClassNote[]             @relation("ClassNoteAuthor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -173,6 +175,7 @@ model Class {
   examPapers         ExamPaper[]
   timetableEntries   TimetableEntry[]
   plannerEntries     PlannerEntry[]
+  classNotes         ClassNote[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1011,6 +1014,50 @@ enum RedFlagStatus {
   RESOLVED
 
   @@map("red_flag_status")
+}
+
+/// A qualitative note a HEAD logs against a class (Module 7.4 - class progress).
+/// Unlike the student-centric exam/attendance records, these capture the softer
+/// signals that feed the all-classes progress dashboard: a HEAD_VISIT note from
+/// a classroom visit, a GENERAL observation, an ASSEMBLY activity the class took
+/// part in, or a PARENT_COMMENT the office received (recorded by the HEAD on the
+/// parent's behalf - a parent-authored flow comes later). `date` is the day the
+/// note is for; `title` is a short line and `body` the detail. `createdById` is
+/// the logging HEAD - a single-column SetNull audit FK (like Attendance.markedBy),
+/// so the note survives if that account is removed; the composite SetNull form
+/// would force schoolId NULL and break the NOT NULL constraint. The class is
+/// pinned to the same school by a composite FK (cascade). Tenant-scoped via RLS.
+model ClassNote {
+  id          String        @id @default(cuid())
+  schoolId    String
+  school      School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId     String
+  class       Class         @relation(fields: [schoolId, classId], references: [schoolId, id], onDelete: Cascade)
+  type        ClassNoteType @default(GENERAL)
+  date        DateTime      @db.Date
+  title       String
+  body        String
+  createdById String?
+  createdBy   User?         @relation("ClassNoteAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId])
+  @@index([classId])
+  @@index([schoolId, date])
+  @@map("class_notes")
+}
+
+/// What a class note records (Module 7.4): a HEAD classroom visit, a general
+/// observation, an assembly activity, or a parent comment the office received.
+enum ClassNoteType {
+  HEAD_VISIT
+  GENERAL
+  ASSEMBLY
+  PARENT_COMMENT
+
+  @@map("class_note_type")
 }
 
 /// A delivered notification for one recipient (Module 4.1). This is the in-app
