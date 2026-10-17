@@ -40,6 +40,10 @@ export type ClassProgressCard = {
   /** All-time published-exam average percentage (0-100), or null. */
   examAverage: number | null;
   openFlags: number;
+  /** Fees billed for this month (period = month), across the class. */
+  feesBilled: number;
+  /** Fees collected (paid) for this month, across the class. */
+  feesCollected: number;
   notes: Record<ClassNoteType, number>;
   noteTotal: number;
 };
@@ -55,6 +59,8 @@ export type AllClassesProgress = {
     /** School-wide all-time published-exam average, or null. */
     examAverage: number | null;
     openFlags: number;
+    feesBilled: number;
+    feesCollected: number;
     notesThisMonth: number;
   };
 };
@@ -130,6 +136,23 @@ export async function getAllClassesProgress(input?: {
       flagsByClass.set(classId, (flagsByClass.get(classId) ?? 0) + 1);
     }
 
+    // Fees for this month (invoice.period = month), tallied per class. Invoices
+    // without a captured class are skipped (no class to attribute them to).
+    const invoices = await tx.invoice.findMany({
+      where: { period: month, status: { not: "CANCELLED" } },
+      select: { classId: true, total: true, paidAmount: true },
+    });
+    const billedByClass = new Map<string, number>();
+    const collectedByClass = new Map<string, number>();
+    for (const inv of invoices) {
+      if (!inv.classId) continue;
+      billedByClass.set(inv.classId, (billedByClass.get(inv.classId) ?? 0) + Number(inv.total));
+      collectedByClass.set(
+        inv.classId,
+        (collectedByClass.get(inv.classId) ?? 0) + Number(inv.paidAmount),
+      );
+    }
+
     // Class notes this month, tallied per class per type.
     const notes = await tx.classNote.findMany({
       where: { date: { gte: start, lt: end } },
@@ -157,6 +180,8 @@ export async function getAllClassesProgress(input?: {
         markedRecords: marked,
         examAverage: max > 0 ? percentage(obtained, max) : null,
         openFlags: flagsByClass.get(c.id) ?? 0,
+        feesBilled: billedByClass.get(c.id) ?? 0,
+        feesCollected: collectedByClass.get(c.id) ?? 0,
         notes: noteTally,
         noteTotal,
       };
@@ -181,6 +206,8 @@ export async function getAllClassesProgress(input?: {
         presentRate: presentRate(totalPresent, totalMarked),
         examAverage: totalMax > 0 ? percentage(totalObtained, totalMax) : null,
         openFlags: flags.length,
+        feesBilled: cards.reduce((sum, c) => sum + c.feesBilled, 0),
+        feesCollected: cards.reduce((sum, c) => sum + c.feesCollected, 0),
         notesThisMonth: notes.length,
       },
     };

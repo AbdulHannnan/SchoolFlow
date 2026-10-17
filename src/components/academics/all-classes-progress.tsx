@@ -10,7 +10,7 @@ import type { LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AllClassesProgress, ClassProgressCard } from "@/server/academics/class-progress";
 import { CLASS_NOTE_TYPE_BADGE, CLASS_NOTE_TYPE_LABELS } from "@/lib/class-notes";
-import { monthLabel } from "@/lib/attendance";
+import { ClassComparisonChart } from "@/components/academics/class-comparison-chart";
 
 /**
  * The HEAD's all-classes progress overview (Module 7.4): a KPI row of school-
@@ -27,7 +27,7 @@ export function AllClassesProgress({ data }: { data: AllClassesProgress }) {
 
   return (
     <div className="space-y-6">
-      <ClassComparisonChart data={data} />
+      <ClassComparisonChart classes={classes} month={data.month} />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Kpi
@@ -68,78 +68,6 @@ export function AllClassesProgress({ data }: { data: AllClassesProgress }) {
         </div>
       )}
     </div>
-  );
-}
-
-/**
- * A column chart comparing every class's attendance present-rate for the month
- * - the headline "how do the classes stack up" view. A single-series magnitude
- * chart, so one hue (identity is named by the title, not a legend); a column
- * tints to the destructive token when it falls below the 75% target, and the
- * value sits above every bar so a weak class reads without relying on color. A
- * dashed line marks the target. Scrolls sideways when there are many classes.
- */
-function ClassComparisonChart({ data }: { data: AllClassesProgress }) {
-  const { classes, month } = data;
-  if (classes.length === 0) return null;
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Attendance by class</CardTitle>
-        <p className="text-muted-foreground text-sm">
-          Present-rate for {monthLabel(month)}. The dashed line marks the 75% target.
-        </p>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto pb-1">
-          <div
-            className="flex items-end gap-3"
-            role="img"
-            aria-label={`Attendance present-rate by class for ${monthLabel(month)}`}
-          >
-            {classes.map((c) => {
-              const rate = c.presentRate;
-              const low = rate !== null && rate < LOW_ATTENDANCE;
-              return (
-                <div key={c.classId} className="flex w-16 shrink-0 flex-col items-center gap-1.5">
-                  <span
-                    className={`text-xs tabular-nums ${
-                      low ? "text-destructive font-medium" : "text-muted-foreground"
-                    }`}
-                  >
-                    {rate === null ? "—" : `${rate}%`}
-                  </span>
-                  <div
-                    className="bg-muted/50 relative flex h-36 w-full items-end overflow-hidden rounded"
-                    title={`${c.name}: ${
-                      rate === null ? "no attendance marked" : `${rate}% present`
-                    }${c.markedRecords > 0 ? ` (${c.markedRecords} marked)` : ""}`}
-                  >
-                    <div
-                      className="border-border pointer-events-none absolute inset-x-0 border-t border-dashed"
-                      style={{ bottom: "75%" }}
-                    />
-                    {rate !== null ? (
-                      <div
-                        className={`w-full rounded-t ${low ? "bg-destructive" : "bg-primary"}`}
-                        style={{ height: `${rate}%` }}
-                      />
-                    ) : null}
-                  </div>
-                  <span
-                    className="text-muted-foreground w-full truncate text-center text-xs"
-                    title={c.name}
-                  >
-                    {c.name}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 
