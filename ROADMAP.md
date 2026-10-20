@@ -72,7 +72,7 @@
 - [x] 9.1 Head dashboard
 - [x] 9.2 Teacher portal
 - [x] 9.3 Parent portal
-- [ ] 9.4 Student portal (deferred - no User<->Student link / no student login accounts yet; students are served via the parent portal for now)
+- [ ] 9.4 Student portal (deferred - no User<->Student link / no student login accounts yet; students are served via the parent portal for now) - Will added soon
 
 ## Module 10 - PWA, Localization & Deploy (Phase 2)
 
