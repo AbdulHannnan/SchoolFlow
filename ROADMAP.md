@@ -76,7 +76,7 @@
 
 ## Module 10 - PWA, Localization & Deploy (Phase 2)
 
-- [ ] 10.1 PWA (manifest, service worker, installable)
+- [x] 10.1 PWA (manifest, service worker, installable)
 - [ ] 10.2 Urdu localization
 - [ ] 10.3 VPS deploy (Docker + nginx + SSL + DB backups)
 - [ ] 10.4 Academic year rollover / promotion to next class
