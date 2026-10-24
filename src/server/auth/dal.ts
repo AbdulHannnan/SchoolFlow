@@ -2,6 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 import { forbidden, redirect } from "next/navigation";
+import { connection } from "next/server";
 import type { Role } from "@prisma/client";
 import type { Session } from "next-auth";
 
@@ -30,6 +31,12 @@ type SessionUser = Session["user"];
 
 /** The raw session user, or `null` when signed out. Does not redirect. */
 export async function getSessionUser(): Promise<SessionUser | null> {
+  // The session is request-time data, and Auth.js's `auth()` generates a CSRF
+  // token (`crypto.getRandomValues()`) on every call. Under Cache Components
+  // that unstable value aborts the static prerender, so mark this request-time
+  // *before* calling `auth()`: prerendering stops here and the session (always
+  // behind a Suspense boundary) streams in at request time.
+  await connection();
   const session = await auth();
   return session?.user ?? null;
 }
