@@ -8,6 +8,7 @@ import type { Session } from "next-auth";
 import type { Prisma } from "@prisma/client";
 
 import { auth } from "@/server/auth";
+import { hasSchool, isRoleAllowed } from "@/server/auth/policy";
 import { withTenant } from "@/server/db/tenant";
 
 type SessionUser = Session["user"];
@@ -45,7 +46,7 @@ export const verifySession = cache(async (): Promise<SessionUser> => {
 /** Require one of `allowed` roles; `forbidden()` (403) if the user lacks them. */
 export async function requireRole(...allowed: Role[]): Promise<SessionUser> {
   const user = await verifySession();
-  if (!allowed.includes(user.role)) {
+  if (!isRoleAllowed(user, allowed)) {
     forbidden();
   }
   return user;
@@ -63,7 +64,7 @@ export async function requireSuperAdmin(): Promise<SessionUser> {
  */
 export async function requireSchool(): Promise<{ user: SessionUser; schoolId: string }> {
   const user = await verifySession();
-  if (!user.schoolId) {
+  if (!hasSchool(user)) {
     forbidden();
   }
   return { user, schoolId: user.schoolId };
@@ -71,7 +72,7 @@ export async function requireSchool(): Promise<{ user: SessionUser; schoolId: st
 
 /** Non-throwing role check for conditional UI (e.g. hiding a nav item). */
 export function hasRole(user: SessionUser | null, ...allowed: Role[]): boolean {
-  return user != null && allowed.includes(user.role);
+  return isRoleAllowed(user, allowed);
 }
 
 /**

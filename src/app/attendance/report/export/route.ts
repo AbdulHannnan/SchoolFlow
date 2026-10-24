@@ -1,4 +1,5 @@
 import { getSessionUser } from "@/server/auth/dal";
+import { isRoleAllowed } from "@/server/auth/policy";
 import { getClassAttendanceReport } from "@/server/academics/attendance";
 import { normalizeDate, presentRate } from "@/lib/attendance";
 import { toCsv } from "@/lib/csv";
@@ -10,7 +11,7 @@ import { toCsv } from "@/lib/csv";
  */
 export async function GET(request: Request): Promise<Response> {
   const user = await getSessionUser();
-  if (!user || (user.role !== "HEAD" && user.role !== "TEACHER")) {
+  if (!isRoleAllowed(user, ["HEAD", "TEACHER"])) {
     return new Response("Forbidden", { status: 403 });
   }
 
