@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
     // Enables the `forbidden()` / `unauthorized()` interrupts used by the
     // RBAC guards in `src/server/auth/dal.ts` (Module 1.4).
     authInterrupts: true,
+    // Set by the `next upgrade --agent=security` flow (16.4.0 -> 16.4.3).
+    agentUpgrade: "security",
   },
 };
 
