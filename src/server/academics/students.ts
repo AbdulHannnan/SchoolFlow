@@ -54,6 +54,40 @@ export async function listStudentsByClass(classId: string) {
   });
 }
 
+/**
+ * One of the signed-in teacher's own classes and its roster. Returns the class
+ * only when the teacher holds a subject assignment in it (same ownership rule
+ * as the rest of the teacher scope), so a teacher can't read another class's
+ * students by guessing its id.
+ */
+export async function listMyClassStudents(classId: string) {
+  const { user, schoolId } = await requireSchool();
+  return withTenant(schoolId, async (tx) => {
+    const cls = await tx.class.findFirst({
+      where: { id: classId, teacherAssignments: { some: { teacherId: user.id } } },
+      select: { id: true, name: true },
+    });
+    if (!cls) throw new Error("Class not found");
+    const students = await tx.student.findMany({
+      where: { classId },
+      orderBy: [{ rollNumber: "asc" }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        rollNumber: true,
+        fatherName: true,
+        fatherCnic: true,
+        gender: true,
+        dateOfBirth: true,
+        admissionDate: true,
+        isActive: true,
+        section: { select: { id: true, name: true } },
+      },
+    });
+    return { class: cls, students };
+  });
+}
+
 export async function createStudent(input: {
   name: string;
   rollNumber: string | null;

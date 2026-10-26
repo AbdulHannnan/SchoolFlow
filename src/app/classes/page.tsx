@@ -1,7 +1,9 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { addBoxClass } from "@/components/ui/add-box";
 import { CreateClassForm } from "@/components/academics/create-class-form";
@@ -9,6 +11,7 @@ import { AddSectionForm } from "@/components/academics/add-section-form";
 import { ClassActions } from "@/components/academics/class-actions";
 import { SectionActions } from "@/components/academics/section-actions";
 import { ClassSubjects } from "@/components/academics/class-subjects";
+import { StudentRosterList } from "@/components/academics/student-roster-list";
 import { Badge } from "@/components/ui/badge";
 import { requireRole } from "@/server/auth/dal";
 import {
@@ -17,27 +20,35 @@ import {
   listTeacherOptions,
   listSubjectOptions,
 } from "@/server/academics/classes";
-import { User as UserIcon, GraduationCap } from "lucide-react";
+import { listMyClassStudents } from "@/server/academics/students";
+import { ArrowLeft, User as UserIcon, GraduationCap } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Classes - School Management",
 };
 
-export default function ClassesPage() {
+type SearchParams = Promise<{ classId?: string }>;
+
+export default function ClassesPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <AppShell title="Classes & Sections">
       <Suspense fallback={<div className="bg-muted h-64 animate-pulse rounded-xl" />}>
-        <ClassesContent />
+        <ClassesContent searchParams={searchParams} />
       </Suspense>
     </AppShell>
   );
 }
 
-async function ClassesContent() {
+async function ClassesContent({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireRole("HEAD", "TEACHER");
 
   // Teachers get a read-only view scoped to the classes they're assigned to.
   if (user.role === "TEACHER") {
+    const sp = await searchParams;
+    // Drill-down: a selected class shows its student roster; otherwise the list.
+    if (sp.classId) {
+      return <TeacherClassRoster classId={sp.classId} />;
+    }
     return <TeacherClasses teacherId={user.id} />;
   }
 
@@ -177,18 +188,23 @@ async function TeacherClasses({ teacherId }: { teacherId: string }) {
       {classes.map((cls) => {
         const mySubjects = cls.teacherAssignments.filter((a) => a.teacherId === teacherId);
         return (
-          <Card key={cls.id}>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {cls.name}
-                {cls.level != null ? (
-                  <span className="text-muted-foreground ml-2 text-sm font-normal">
-                    level {cls.level}
-                  </span>
-                ) : null}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <Link
+            key={cls.id}
+            href={`/classes?classId=${encodeURIComponent(cls.id)}`}
+            className="focus-visible:ring-ring block rounded-xl focus-visible:ring-2 focus-visible:outline-none"
+          >
+            <Card className="hover:border-primary/50 hover:bg-accent/40 transition-colors">
+              <CardHeader>
+                <CardTitle className="text-base">
+                  {cls.name}
+                  {cls.level != null ? (
+                    <span className="text-muted-foreground ml-2 text-sm font-normal">
+                      level {cls.level}
+                    </span>
+                  ) : null}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
               <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                 <span className="flex items-center gap-1.5">
                   <UserIcon className="size-4" />
@@ -246,10 +262,44 @@ async function TeacherClasses({ teacherId }: { teacherId: string }) {
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * A teacher's read-only roster for one of their classes - the same student
+ * details HEAD sees, scoped so a teacher only ever reads their own class.
+ */
+async function TeacherClassRoster({ classId }: { classId: string }) {
+  const { class: cls, students } = await listMyClassStudents(classId);
+
+  return (
+    <div className="space-y-4">
+      <Button asChild variant="ghost" size="sm" className="-ml-2">
+        <Link href="/classes">
+          <ArrowLeft className="size-4" />
+          My classes
+        </Link>
+      </Button>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            {cls.name}
+            <span className="text-muted-foreground ml-2 text-sm font-normal">
+              {students.length} {students.length === 1 ? "student" : "students"}
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <StudentRosterList students={students} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

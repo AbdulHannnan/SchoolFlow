@@ -4,17 +4,15 @@ import { ArrowLeft, GraduationCap } from "lucide-react";
 import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { addBoxClass } from "@/components/ui/add-box";
 import { CreateStudentForm, type ClassOption } from "@/components/academics/create-student-form";
 import { StudentActions } from "@/components/academics/student-actions";
+import { StudentRosterList } from "@/components/academics/student-roster-list";
 import { requireRole } from "@/server/auth/dal";
 import { listStudentsByClass } from "@/server/academics/students";
 import { listClassesWithSections } from "@/server/academics/classes";
-import { formatDay } from "@/lib/attendance";
-import { ageFromDob, formatCnic, genderLabel } from "@/lib/students";
 
 export const metadata: Metadata = {
   title: "Students - School Management",
@@ -115,15 +113,6 @@ async function StudentsOverview() {
   );
 }
 
-function Detail({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium">{value ?? "-"}</dd>
-    </div>
-  );
-}
-
 async function ClassRoster({ classId }: { classId: string }) {
   const [{ class: cls, students }, classes] = await Promise.all([
     listStudentsByClass(classId),
@@ -154,76 +143,20 @@ async function ClassRoster({ classId }: { classId: string }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {students.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No students in this class yet.</p>
-          ) : (
-            <ul className="space-y-3">
-              {students.map((student) => (
-                <li key={student.id} className="rounded-lg border p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">
-                        {student.name}
-                        {student.rollNumber ? (
-                          <span className="text-muted-foreground ml-2 font-normal">
-                            #{student.rollNumber}
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs">
-                        {student.section ? (
-                          <Badge variant="secondary" className="px-1.5 py-0">
-                            {student.section.name}
-                          </Badge>
-                        ) : (
-                          <span className="italic">no section</span>
-                        )}
-                        <Badge
-                          variant="outline"
-                          className={
-                            student.isActive
-                              ? "border-transparent bg-green-100 px-1.5 py-0 text-green-700 dark:bg-green-900/40 dark:text-green-400"
-                              : "border-transparent bg-neutral-200 px-1.5 py-0 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
-                          }
-                        >
-                          {student.isActive ? "Enrolled" : "Not enrolled"}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Link
-                        href={`/attendance/${student.id}`}
-                        className="text-muted-foreground hover:text-foreground text-xs underline-offset-2 hover:underline"
-                      >
-                        Attendance
-                      </Link>
-                      <StudentActions student={student} classId={cls.id} classes={classOptions} />
-                    </div>
-                  </div>
-                  <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
-                    <Detail label="Father" value={student.fatherName} />
-                    <Detail
-                      label="Father CNIC"
-                      value={student.fatherCnic ? formatCnic(student.fatherCnic) : null}
-                    />
-                    <Detail label="Gender" value={genderLabel(student.gender)} />
-                    <Detail
-                      label="Date of birth"
-                      value={student.dateOfBirth ? formatDay(student.dateOfBirth) : null}
-                    />
-                    <Detail
-                      label="Age"
-                      value={student.dateOfBirth ? `${ageFromDob(student.dateOfBirth)} yrs` : null}
-                    />
-                    <Detail
-                      label="Admission"
-                      value={student.admissionDate ? formatDay(student.admissionDate) : null}
-                    />
-                  </dl>
-                </li>
-              ))}
-            </ul>
-          )}
+          <StudentRosterList
+            students={students}
+            actions={(student) => (
+              <>
+                <Link
+                  href={`/attendance/${student.id}`}
+                  className="text-muted-foreground hover:text-foreground text-xs underline-offset-2 hover:underline"
+                >
+                  Attendance
+                </Link>
+                <StudentActions student={student} classId={cls.id} classes={classOptions} />
+              </>
+            )}
+          />
         </CardContent>
       </Card>
     </div>
