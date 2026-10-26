@@ -11,31 +11,51 @@ import { withTenant } from "@/server/db/tenant";
  * school. Role enforcement (HEAD) lives in the Server Actions.
  */
 
+/** Shared include so the management and teacher-scoped reads return the same
+ * class/section shape (and thus render with the same cards). */
+const classWithSectionsInclude = {
+  sections: {
+    orderBy: { name: "asc" },
+    include: {
+      sectionTeacher: { select: { id: true, name: true } },
+      _count: { select: { students: true } },
+    },
+  },
+  classTeacher: { select: { id: true, name: true } },
+  teacherAssignments: {
+    orderBy: { subject: { name: "asc" } },
+    select: {
+      id: true,
+      subjectId: true,
+      teacherId: true,
+      subject: { select: { name: true } },
+      teacher: { select: { name: true } },
+    },
+  },
+  _count: { select: { students: true } },
+} satisfies Prisma.ClassInclude;
+
 export function listClassesWithSections() {
   return withCurrentTenant((tx) =>
     tx.class.findMany({
       orderBy: [{ level: "asc" }, { name: "asc" }],
-      include: {
-        sections: {
-          orderBy: { name: "asc" },
-          include: {
-            sectionTeacher: { select: { id: true, name: true } },
-            _count: { select: { students: true } },
-          },
-        },
-        classTeacher: { select: { id: true, name: true } },
-        teacherAssignments: {
-          orderBy: { subject: { name: "asc" } },
-          select: {
-            id: true,
-            subjectId: true,
-            teacherId: true,
-            subject: { select: { name: true } },
-            teacher: { select: { name: true } },
-          },
-        },
-        _count: { select: { students: true } },
-      },
+      include: classWithSectionsInclude,
+    }),
+  );
+}
+
+/**
+ * The signed-in teacher's own classes - those where they hold a subject
+ * assignment. Same scoping rule as `listMarkableClasses` and the teacher
+ * dashboard, so a teacher sees one consistent set of classes across the app.
+ */
+export async function listMyClassesWithSections() {
+  const { user, schoolId } = await requireSchool();
+  return withTenant(schoolId, (tx) =>
+    tx.class.findMany({
+      where: { teacherAssignments: { some: { teacherId: user.id } } },
+      orderBy: [{ level: "asc" }, { name: "asc" }],
+      include: classWithSectionsInclude,
     }),
   );
 }
