@@ -186,6 +186,42 @@ export async function listInvoices(input?: { classId?: string | null; period?: s
   });
 }
 
+/**
+ * Invoices for one class, for a teacher's read-only class view. A TEACHER may
+ * only read a class they hold an assignment in (HEAD may read any); the same
+ * ownership rule the rest of the teacher scope uses.
+ */
+export async function listMyClassInvoices(classId: string): Promise<InvoiceRow[]> {
+  const { user, schoolId } = await requireSchool();
+  return withTenant(schoolId, async (tx) => {
+    if (user.role === "TEACHER") {
+      const assigned = await tx.teacherAssignment.findFirst({
+        where: { teacherId: user.id, classId },
+        select: { id: true },
+      });
+      if (!assigned) throw new Error("You are not assigned to this class");
+    }
+    const rows = await tx.invoice.findMany({
+      where: { classId },
+      orderBy: [{ period: "desc" }, { createdAt: "desc" }],
+      take: 200,
+      select: {
+        id: true,
+        studentId: true,
+        period: true,
+        title: true,
+        dueDate: true,
+        status: true,
+        total: true,
+        paidAmount: true,
+        student: { select: { name: true, rollNumber: true } },
+        class: { select: { name: true } },
+      },
+    });
+    return rows.map(toRow);
+  });
+}
+
 async function assertCanViewStudent(
   tx: Prisma.TransactionClient,
   user: Session["user"],

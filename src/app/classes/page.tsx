@@ -11,8 +11,14 @@ import { AddSectionForm } from "@/components/academics/add-section-form";
 import { ClassActions } from "@/components/academics/class-actions";
 import { SectionActions } from "@/components/academics/section-actions";
 import { ClassSubjects } from "@/components/academics/class-subjects";
+import type { AttendanceStatus } from "@prisma/client";
+
 import { StudentRosterList } from "@/components/academics/student-roster-list";
+import { InvoiceStatusBadge } from "@/components/fees/invoice-status-badge";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { formatAttendanceDate, statusBadgeClass, statusLabel } from "@/lib/attendance";
+import { formatPKR } from "@/lib/money";
 import { requireRole } from "@/server/auth/dal";
 import {
   listClassesWithSections,
@@ -21,13 +27,16 @@ import {
   listSubjectOptions,
 } from "@/server/academics/classes";
 import { listMyClassStudents } from "@/server/academics/students";
+import { getClassAttendanceForDate } from "@/server/academics/attendance";
+import { listMyClassInvoices } from "@/server/fees/invoices";
 import { ArrowLeft, User as UserIcon, GraduationCap } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Classes - School Management",
 };
 
-type SearchParams = Promise<{ classId?: string }>;
+type TabKey = "info" | "attendance" | "fee";
+type SearchParams = Promise<{ classId?: string; tab?: string }>;
 
 export default function ClassesPage({ searchParams }: { searchParams: SearchParams }) {
   return (
@@ -45,9 +54,11 @@ async function ClassesContent({ searchParams }: { searchParams: SearchParams }) 
   // Teachers get a read-only view scoped to the classes they're assigned to.
   if (user.role === "TEACHER") {
     const sp = await searchParams;
-    // Drill-down: a selected class shows its student roster; otherwise the list.
+    // Drill-down: a selected class shows its tabbed detail; otherwise the list.
     if (sp.classId) {
-      return <TeacherClassRoster classId={sp.classId} />;
+      const tab: TabKey =
+        sp.tab === "attendance" || sp.tab === "fee" ? sp.tab : "info";
+      return <TeacherClassDetail classId={sp.classId} tab={tab} />;
     }
     return <TeacherClasses teacherId={user.id} />;
   }
@@ -271,11 +282,21 @@ async function TeacherClasses({ teacherId }: { teacherId: string }) {
   );
 }
 
+const TEACHER_TABS: { key: TabKey; label: string }[] = [
+  { key: "info", label: "Student information" },
+  { key: "attendance", label: "Attendance" },
+  { key: "fee", label: "Fee" },
+];
+
 /**
- * A teacher's read-only roster for one of their classes - the same student
- * details HEAD sees, scoped so a teacher only ever reads their own class.
+ * A teacher's read-only detail for one of their classes, with three tabs:
+ * the student roster (same details HEAD sees), attendance for today and the
+ * previous day, and the class's fee invoices. Tabs are plain links that set
+ * `?tab=` so the view stays server-rendered; ownership is enforced in each
+ * tab's data read.
  */
-async function TeacherClassRoster({ classId }: { classId: string }) {
+async function TeacherClassDetail({ classId, tab }: { classId: string; tab: TabKey }) {
+  // Verifies ownership and gives the class name for the header.
   const { class: cls, students } = await listMyClassStudents(classId);
 
   return (
@@ -287,19 +308,165 @@ async function TeacherClassRoster({ classId }: { classId: string }) {
         </Link>
       </Button>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            {cls.name}
-            <span className="text-muted-foreground ml-2 text-sm font-normal">
-              {students.length} {students.length === 1 ? "student" : "students"}
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <StudentRosterList students={students} />
-        </CardContent>
-      </Card>
+      <div>
+        <h2 className="text-lg font-semibold">{cls.name}</h2>
+        <p className="text-muted-foreground text-sm">
+          {students.length} {students.length === 1 ? "student" : "students"}
+        </p>
+      </div>
+
+      <div
+        role="tablist"
+        className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-lg p-1"
+      >
+        {TEACHER_TABS.map((t) => {
+          const active = t.key === tab;
+          return (
+            <Link
+              key={t.key}
+              role="tab"
+              aria-selected={active}
+              href={`/classes?classId=${encodeURIComponent(classId)}&tab=${t.key}`}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                active
+                  ? "bg-background text-foreground shadow-sm"
+                  : "hover:text-foreground",
+              )}
+            >
+              {t.label}
+            </Link>
+          );
+        })}
+      </div>
+
+      {tab === "info" ? (
+        <Card>
+          <CardContent className="pt-6">
+            <StudentRosterList students={students} />
+          </CardContent>
+        </Card>
+      ) : tab === "attendance" ? (
+        <ClassAttendanceTab classId={classId} />
+      ) : (
+        <ClassFeeTab classId={classId} />
+      )}
     </div>
+  );
+}
+
+/** Attendance for the class today and the previous day, per student. */
+async function ClassAttendanceTab({ classId }: { classId: string }) {
+  const now = new Date();
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const [todaySheet, prevSheet] = await Promise.all([
+    getClassAttendanceForDate({ classId, sectionId: null, date: now }),
+    getClassAttendanceForDate({ classId, sectionId: null, date: yesterday }),
+  ]);
+
+  const prevByStudent = new Map(prevSheet.roster.map((r) => [r.studentId, r.record]));
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        {todaySheet.roster.length === 0 ? (
+          <p className="text-muted-foreground text-sm">No students in this class yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-muted-foreground border-b text-left text-xs">
+                  <th className="py-2 pr-3 font-medium">Student</th>
+                  <th className="py-2 pr-3 font-medium">
+                    {formatAttendanceDate(prevSheet.date)}
+                  </th>
+                  <th className="py-2 font-medium">
+                    {formatAttendanceDate(todaySheet.date)} (today)
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {todaySheet.roster.map((r) => (
+                  <tr key={r.studentId} className="border-b last:border-0">
+                    <td className="py-2 pr-3">
+                      {r.name}
+                      {r.rollNumber ? (
+                        <span className="text-muted-foreground ml-2">#{r.rollNumber}</span>
+                      ) : null}
+                    </td>
+                    <td className="py-2 pr-3">
+                      <StatusCell record={prevByStudent.get(r.studentId) ?? null} />
+                    </td>
+                    <td className="py-2">
+                      <StatusCell record={r.record} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function StatusCell({ record }: { record: { status: AttendanceStatus } | null }) {
+  if (!record) {
+    return <span className="text-muted-foreground text-xs italic">Not marked</span>;
+  }
+  return (
+    <Badge variant="outline" className={statusBadgeClass(record.status)}>
+      {statusLabel(record.status)}
+    </Badge>
+  );
+}
+
+/** The class's fee invoices (read-only), grouped newest period first. */
+async function ClassFeeTab({ classId }: { classId: string }) {
+  const invoices = await listMyClassInvoices(classId);
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        {invoices.length === 0 ? (
+          <p className="text-muted-foreground text-sm">No invoices for this class yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-muted-foreground border-b text-left text-xs">
+                  <th className="py-2 pr-3 font-medium">Student</th>
+                  <th className="py-2 pr-3 font-medium">Period</th>
+                  <th className="py-2 pr-3 text-right font-medium">Total</th>
+                  <th className="py-2 pr-3 text-right font-medium">Paid</th>
+                  <th className="py-2 pr-3 text-right font-medium">Balance</th>
+                  <th className="py-2 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map((inv) => (
+                  <tr key={inv.id} className="border-b last:border-0">
+                    <td className="py-2 pr-3">
+                      {inv.studentName}
+                      {inv.rollNumber ? (
+                        <span className="text-muted-foreground ml-2">#{inv.rollNumber}</span>
+                      ) : null}
+                    </td>
+                    <td className="py-2 pr-3">{inv.period}</td>
+                    <td className="py-2 pr-3 text-right">{formatPKR(inv.total)}</td>
+                    <td className="py-2 pr-3 text-right">{formatPKR(inv.paidAmount)}</td>
+                    <td className="py-2 pr-3 text-right">{formatPKR(inv.balance)}</td>
+                    <td className="py-2">
+                      <InvoiceStatusBadge status={inv.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
