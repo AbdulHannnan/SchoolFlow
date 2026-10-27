@@ -59,6 +59,27 @@ export function listAllTimetable() {
   );
 }
 
+/**
+ * The signed-in teacher's timetable slots for one class: each the subject, day
+ * and period they teach it, ordered by day then period. Scoped to `user.id`, so
+ * a teacher only ever reads their own schedule.
+ */
+export async function listMyClassSchedule(classId: string) {
+  const { user, schoolId } = await requireSchool();
+  return withTenant(schoolId, (tx) =>
+    tx.timetableEntry.findMany({
+      where: { teacherId: user.id, classId },
+      orderBy: [{ day: "asc" }, { period: "asc" }],
+      select: {
+        id: true,
+        day: true,
+        period: true,
+        subject: { select: { id: true, name: true } },
+      },
+    }),
+  );
+}
+
 /** A teacher's weekly timetable: the teacher (name/email) and their slots
  * ordered by day then period, each with subject and class names. */
 export async function getTeacherTimetable(teacherId: string) {

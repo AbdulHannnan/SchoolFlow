@@ -37,7 +37,9 @@ import {
   getClassAttendanceForDate,
   getClassAttendanceMonth,
 } from "@/server/academics/attendance";
+import { listMyClassSchedule } from "@/server/academics/teachers";
 import { listMyClassInvoices } from "@/server/fees/invoices";
+import { WEEKDAY_LABELS, periodTime } from "@/lib/timetable";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -373,17 +375,77 @@ async function TeacherClassDetail({
       </div>
 
       {tab === "info" ? (
-        <Card>
-          <CardContent className="pt-6">
-            <StudentRosterList students={students} />
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <ClassScheduleCard classId={classId} />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Students</CardTitle>
+              <CardDescription>
+                {students.length} {students.length === 1 ? "student" : "students"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <StudentRosterList students={students} />
+            </CardContent>
+          </Card>
+        </div>
       ) : tab === "attendance" ? (
         <ClassAttendanceTab classId={classId} date={date} month={month} />
       ) : (
         <ClassFeeTab classId={classId} />
       )}
     </div>
+  );
+}
+
+/**
+ * The subjects the signed-in teacher teaches in this class, each with the days
+ * and times (periods) they're scheduled - from their timetable slots.
+ */
+async function ClassScheduleCard({ classId }: { classId: string }) {
+  const slots = await listMyClassSchedule(classId);
+  type Slot = (typeof slots)[number];
+
+  const bySubject = new Map<string, { name: string; slots: Slot[] }>();
+  for (const slot of slots) {
+    let group = bySubject.get(slot.subject.id);
+    if (!group) {
+      group = { name: slot.subject.name, slots: [] };
+      bySubject.set(slot.subject.id, group);
+    }
+    group.slots.push(slot);
+  }
+  const groups = [...bySubject.values()];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Subjects you teach here</CardTitle>
+        <CardDescription>The days and times you take this class.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {groups.length === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            No timetable slots are scheduled for you in this class yet.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {groups.map((group) => (
+              <li key={group.name} className="rounded-lg border p-3">
+                <p className="font-medium">{group.name}</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {group.slots.map((slot) => (
+                    <Badge key={slot.id} variant="secondary">
+                      {WEEKDAY_LABELS[slot.day]} {periodTime(slot.period)}
+                    </Badge>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -514,7 +576,7 @@ async function ClassAttendanceTab({
                               />
                             </div>
                             <span className="text-muted-foreground w-24 shrink-0 text-right text-xs">
-                              {r.total > 0 ? `${pct}% (${r.present}/${r.total})` : "—"}
+                              {r.total > 0 ? `${pct}% (${r.present}/${r.total})` : "-"}
                             </span>
                           </div>
                         </td>

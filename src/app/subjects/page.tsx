@@ -12,7 +12,7 @@ import { DeleteButton } from "@/components/academics/delete-button";
 import { ClassSubjectManager } from "@/components/academics/class-subject-manager";
 import { deleteSubjectAction } from "@/app/subjects/actions";
 import { requireRole } from "@/server/auth/dal";
-import { listSubjects } from "@/server/academics/subjects";
+import { listSubjects, listMySubjects } from "@/server/academics/subjects";
 import {
   listClassesWithSections,
   getClassSubjects,
@@ -37,13 +37,70 @@ export default function SubjectsPage({ searchParams }: { searchParams: SearchPar
 }
 
 async function SubjectsContent({ searchParams }: { searchParams: SearchParams }) {
-  await requireRole("HEAD");
-  const sp = await searchParams;
+  const user = await requireRole("HEAD", "TEACHER");
 
+  // Teachers get a read-only view of the subjects they teach, by class.
+  if (user.role === "TEACHER") {
+    return <TeacherSubjects />;
+  }
+
+  const sp = await searchParams;
   if (sp.classId) {
     return <ClassSubjectsDetail classId={sp.classId} />;
   }
   return <SubjectsOverview />;
+}
+
+async function TeacherSubjects() {
+  const subjects = await listMySubjects();
+
+  if (subjects.length === 0) {
+    return (
+      <p className="text-muted-foreground text-sm">
+        You have no subjects assigned yet. Ask your head teacher to assign you a subject in a class.
+      </p>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {subjects.map((subject) => (
+        <Card key={subject.subjectId} className="h-full">
+          <CardHeader>
+            <CardTitle className="text-base">
+              {subject.subjectName}
+              {subject.code ? (
+                <span className="text-muted-foreground ml-2 text-sm font-normal">
+                  {subject.code}
+                </span>
+              ) : null}
+            </CardTitle>
+            <CardDescription>
+              {subject.classes.length} {subject.classes.length === 1 ? "class" : "classes"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-1.5">
+              {subject.classes.map((cls) => (
+                <Link
+                  key={cls.id}
+                  href={`/classes?classId=${encodeURIComponent(cls.id)}`}
+                  className="focus-visible:ring-ring rounded-md focus-visible:ring-2 focus-visible:outline-none"
+                >
+                  <Badge variant="secondary" className="hover:bg-secondary/70">
+                    {cls.name}
+                    {cls.level != null ? (
+                      <span className="text-muted-foreground ml-1">(level {cls.level})</span>
+                    ) : null}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
 }
 
 async function SubjectsOverview() {
