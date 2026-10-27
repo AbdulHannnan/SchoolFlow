@@ -4,20 +4,26 @@ import type { Metadata } from "next";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { addBoxClass } from "@/components/ui/add-box";
 import { CreateClassForm } from "@/components/academics/create-class-form";
 import { AddSectionForm } from "@/components/academics/add-section-form";
 import { ClassActions } from "@/components/academics/class-actions";
 import { SectionActions } from "@/components/academics/section-actions";
 import { ClassSubjects } from "@/components/academics/class-subjects";
-import type { AttendanceStatus } from "@prisma/client";
-
 import { StudentRosterList } from "@/components/academics/student-roster-list";
+import { MarkAttendanceForm } from "@/components/academics/mark-attendance-form";
 import { InvoiceStatusBadge } from "@/components/fees/invoice-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { formatAttendanceDate, statusBadgeClass, statusLabel } from "@/lib/attendance";
+import {
+  currentMonth,
+  monthLabel,
+  normalizeDate,
+  normalizeMonth,
+  shiftMonth,
+} from "@/lib/attendance";
 import { formatPKR } from "@/lib/money";
 import { requireRole } from "@/server/auth/dal";
 import {
@@ -27,16 +33,30 @@ import {
   listSubjectOptions,
 } from "@/server/academics/classes";
 import { listMyClassStudents } from "@/server/academics/students";
-import { getClassAttendanceForDate } from "@/server/academics/attendance";
+import {
+  getClassAttendanceForDate,
+  getClassAttendanceMonth,
+} from "@/server/academics/attendance";
 import { listMyClassInvoices } from "@/server/fees/invoices";
-import { ArrowLeft, User as UserIcon, GraduationCap } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  User as UserIcon,
+  GraduationCap,
+} from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Classes - School Management",
 };
 
 type TabKey = "info" | "attendance" | "fee";
-type SearchParams = Promise<{ classId?: string; tab?: string }>;
+type SearchParams = Promise<{
+  classId?: string;
+  tab?: string;
+  date?: string;
+  month?: string;
+}>;
 
 export default function ClassesPage({ searchParams }: { searchParams: SearchParams }) {
   return (
@@ -58,7 +78,9 @@ async function ClassesContent({ searchParams }: { searchParams: SearchParams }) 
     if (sp.classId) {
       const tab: TabKey =
         sp.tab === "attendance" || sp.tab === "fee" ? sp.tab : "info";
-      return <TeacherClassDetail classId={sp.classId} tab={tab} />;
+      return (
+        <TeacherClassDetail classId={sp.classId} tab={tab} date={sp.date} month={sp.month} />
+      );
     }
     return <TeacherClasses teacherId={user.id} />;
   }
@@ -295,7 +317,17 @@ const TEACHER_TABS: { key: TabKey; label: string }[] = [
  * `?tab=` so the view stays server-rendered; ownership is enforced in each
  * tab's data read.
  */
-async function TeacherClassDetail({ classId, tab }: { classId: string; tab: TabKey }) {
+async function TeacherClassDetail({
+  classId,
+  tab,
+  date,
+  month,
+}: {
+  classId: string;
+  tab: TabKey;
+  date?: string;
+  month?: string;
+}) {
   // Verifies ownership and gives the class name for the header.
   const { class: cls, students } = await listMyClassStudents(classId);
 
@@ -347,7 +379,7 @@ async function TeacherClassDetail({ classId, tab }: { classId: string; tab: TabK
           </CardContent>
         </Card>
       ) : tab === "attendance" ? (
-        <ClassAttendanceTab classId={classId} />
+        <ClassAttendanceTab classId={classId} date={date} month={month} />
       ) : (
         <ClassFeeTab classId={classId} />
       )}
@@ -355,70 +387,186 @@ async function TeacherClassDetail({ classId, tab }: { classId: string; tab: TabK
   );
 }
 
-/** Attendance for the class today and the previous day, per student. */
-async function ClassAttendanceTab({ classId }: { classId: string }) {
-  const now = new Date();
-  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const [todaySheet, prevSheet] = await Promise.all([
-    getClassAttendanceForDate({ classId, sectionId: null, date: now }),
-    getClassAttendanceForDate({ classId, sectionId: null, date: yesterday }),
+/**
+ * The functional attendance tab for a teacher: mark the roster for a chosen
+ * date, and below it a monthly analysis (per-student rate + class average).
+ * The date and month flow through the URL so both survive a refresh; marking
+ * itself posts the shared `saveAttendanceAction` (TEACHER-allowed) and the
+ * server re-renders in place.
+ */
+async function ClassAttendanceTab({
+  classId,
+  date,
+  month,
+}: {
+  classId: string;
+  date?: string;
+  month?: string;
+}) {
+  const day = normalizeDate(date);
+  const period = normalizeMonth(month);
+
+  const [sheet, overview] = await Promise.all([
+    getClassAttendanceForDate({ classId, sectionId: null, date: new Date(day) }),
+    getClassAttendanceMonth({ classId, month: period }),
   ]);
 
-  const prevByStudent = new Map(prevSheet.roster.map((r) => [r.studentId, r.record]));
-
   return (
-    <Card>
-      <CardContent className="pt-6">
-        {todaySheet.roster.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No students in this class yet.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-muted-foreground border-b text-left text-xs">
-                  <th className="py-2 pr-3 font-medium">Student</th>
-                  <th className="py-2 pr-3 font-medium">
-                    {formatAttendanceDate(prevSheet.date)}
-                  </th>
-                  <th className="py-2 font-medium">
-                    {formatAttendanceDate(todaySheet.date)} (today)
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {todaySheet.roster.map((r) => (
-                  <tr key={r.studentId} className="border-b last:border-0">
-                    <td className="py-2 pr-3">
-                      {r.name}
-                      {r.rollNumber ? (
-                        <span className="text-muted-foreground ml-2">#{r.rollNumber}</span>
-                      ) : null}
-                    </td>
-                    <td className="py-2 pr-3">
-                      <StatusCell record={prevByStudent.get(r.studentId) ?? null} />
-                    </td>
-                    <td className="py-2">
-                      <StatusCell record={r.record} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Take attendance</CardTitle>
+          <CardDescription>Mark the class for a day, then save.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Server-rendered date picker: preserves the class + tab. */}
+          <form method="get" action="/classes" className="flex flex-wrap items-end gap-2">
+            <input type="hidden" name="classId" value={classId} />
+            <input type="hidden" name="tab" value="attendance" />
+            <input type="hidden" name="month" value={period} />
+            <div className="space-y-1">
+              <label htmlFor="att-date" className="text-muted-foreground text-xs font-medium">
+                Date
+              </label>
+              <Input id="att-date" type="date" name="date" defaultValue={day} className="w-44" />
+            </div>
+            <Button type="submit" variant="outline" size="sm">
+              Load
+            </Button>
+          </form>
+
+          {sheet.roster.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No active students in this class.</p>
+          ) : (
+            <MarkAttendanceForm
+              classId={classId}
+              sectionId=""
+              date={day}
+              className={sheet.class.name}
+              roster={sheet.roster}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">Monthly attendance</CardTitle>
+              <CardDescription>
+                {monthLabel(period)}
+                {overview.classAverage != null
+                  ? ` - class average ${overview.classAverage}%`
+                  : " - nothing marked yet"}
+              </CardDescription>
+            </div>
+            <MonthStepper classId={classId} day={day} month={period} />
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardHeader>
+        <CardContent>
+          {overview.rows.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No active students in this class.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-muted-foreground border-b text-left text-xs">
+                    <th className="py-2 pr-3 font-medium">Student</th>
+                    <th className="w-1/2 py-2 pr-3 font-medium">This month</th>
+                    <th className="py-2 font-medium">Flag</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {overview.rows.map((r) => {
+                    const pct = r.rate ?? 0;
+                    const belowAverage =
+                      r.rate != null &&
+                      overview.classAverage != null &&
+                      r.rate < overview.classAverage;
+                    return (
+                      <tr key={r.studentId} className="border-b last:border-0">
+                        <td className="py-2 pr-3">
+                          <span className="font-medium">{r.name}</span>
+                          {r.rollNumber ? (
+                            <span className="text-muted-foreground ml-2">#{r.rollNumber}</span>
+                          ) : null}
+                        </td>
+                        <td className="py-2 pr-3">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="bg-muted h-2 flex-1 overflow-hidden rounded-full"
+                              role="progressbar"
+                              aria-valuenow={pct}
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                            >
+                              <div
+                                className={cn(
+                                  "h-full rounded-full",
+                                  pct >= 75
+                                    ? "bg-green-500"
+                                    : pct >= 40
+                                      ? "bg-amber-500"
+                                      : "bg-red-500",
+                                )}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="text-muted-foreground w-24 shrink-0 text-right text-xs">
+                              {r.total > 0 ? `${pct}% (${r.present}/${r.total})` : "—"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-2">
+                          {r.rate != null && r.rate < 75 ? (
+                            <Badge
+                              variant="outline"
+                              className="border-transparent bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
+                            >
+                              Low
+                            </Badge>
+                          ) : belowAverage ? (
+                            <Badge variant="secondary">Below avg</Badge>
+                          ) : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
-function StatusCell({ record }: { record: { status: AttendanceStatus } | null }) {
-  if (!record) {
-    return <span className="text-muted-foreground text-xs italic">Not marked</span>;
-  }
+/** Prev/next month links for the monthly analysis, preserving class + date. */
+function MonthStepper({ classId, day, month }: { classId: string; day: string; month: string }) {
+  const base = `/classes?classId=${encodeURIComponent(classId)}&tab=attendance&date=${day}`;
+  const atCurrent = month >= currentMonth();
   return (
-    <Badge variant="outline" className={statusBadgeClass(record.status)}>
-      {statusLabel(record.status)}
-    </Badge>
+    <div className="flex items-center gap-2">
+      <Button asChild variant="outline" size="icon" aria-label="Previous month">
+        <Link href={`${base}&month=${shiftMonth(month, -1)}`}>
+          <ChevronLeft className="size-4" />
+        </Link>
+      </Button>
+      <span className="text-muted-foreground w-28 text-center text-xs">{monthLabel(month)}</span>
+      {atCurrent ? (
+        <Button variant="outline" size="icon" aria-label="Next month" disabled>
+          <ChevronRight className="size-4" />
+        </Button>
+      ) : (
+        <Button asChild variant="outline" size="icon" aria-label="Next month">
+          <Link href={`${base}&month=${shiftMonth(month, 1)}`}>
+            <ChevronRight className="size-4" />
+          </Link>
+        </Button>
+      )}
+    </div>
   );
 }
 

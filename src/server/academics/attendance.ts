@@ -118,6 +118,79 @@ export async function getClassAttendanceOverview(classId: string) {
   });
 }
 
+export type MonthAttendanceRow = {
+  studentId: string;
+  name: string;
+  rollNumber: string | null;
+  present: number;
+  total: number;
+  /** Percent present (PRESENT or LATE counts as present), or null if unmarked. */
+  rate: number | null;
+};
+
+/**
+ * Per-student attendance for a class over a billing-style month ("YYYY-MM"),
+ * plus the class average - the teacher's monthly analysis. Counts run to the
+ * month end, or today for the current month. A TEACHER may only read a class
+ * they're assigned to; HEAD may read any (same rule as the marking grid).
+ */
+export async function getClassAttendanceMonth(input: { classId: string; month: string }) {
+  const { user, schoolId } = await requireSchool();
+  const [y, m] = input.month.split("-").map(Number);
+  const monthStart = new Date(Date.UTC(y, m - 1, 1));
+  const monthEnd = new Date(Date.UTC(y, m, 0)); // last day of the month (UTC)
+  const today = toDateOnly(new Date());
+  const rangeEnd = monthEnd.getTime() < today.getTime() ? monthEnd : today;
+
+  return withTenant(schoolId, async (tx) => {
+    const cls = await tx.class.findUnique({
+      where: { id: input.classId },
+      select: { id: true, name: true },
+    });
+    if (!cls) throw new Error("Class not found");
+    await assertCanMarkClass(tx, user, input.classId);
+
+    const students = await tx.student.findMany({
+      where: { classId: input.classId, isActive: true },
+      orderBy: [{ rollNumber: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, rollNumber: true },
+    });
+
+    const records = await tx.attendance.findMany({
+      where: { classId: input.classId, date: { gte: monthStart, lte: rangeEnd } },
+      select: { studentId: true, status: true },
+    });
+
+    const byStudent = new Map<string, { present: number; total: number }>();
+    for (const r of records) {
+      const agg = byStudent.get(r.studentId) ?? { present: 0, total: 0 };
+      agg.total += 1;
+      if (r.status === "PRESENT" || r.status === "LATE") agg.present += 1;
+      byStudent.set(r.studentId, agg);
+    }
+
+    const rows: MonthAttendanceRow[] = students.map((s) => {
+      const agg = byStudent.get(s.id) ?? { present: 0, total: 0 };
+      return {
+        studentId: s.id,
+        name: s.name,
+        rollNumber: s.rollNumber,
+        present: agg.present,
+        total: agg.total,
+        rate: agg.total > 0 ? Math.round((agg.present / agg.total) * 100) : null,
+      };
+    });
+
+    const marked = rows.filter((r) => r.rate != null);
+    const classAverage =
+      marked.length > 0
+        ? Math.round(marked.reduce((sum, r) => sum + (r.rate as number), 0) / marked.length)
+        : null;
+
+    return { class: cls, month: input.month, rows, classAverage };
+  });
+}
+
 export type AttendanceEntry = {
   studentId: string;
   status: AttendanceStatus;
