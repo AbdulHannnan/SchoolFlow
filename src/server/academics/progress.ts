@@ -250,37 +250,37 @@ export async function listClassProgress(classId: string, input?: { month?: strin
     });
 
     const { start, end } = monthRange(month);
-    const [records, flags, results, invoices] = await Promise.all([
-      tx.attendance.findMany({
-        where: { classId, date: { gte: start, lt: end } },
-        select: { studentId: true, status: true },
-      }),
-      tx.redFlag.findMany({
-        where: { status: "OPEN", student: { classId } },
-        select: { studentId: true },
-      }),
-      // Marks: every published-exam result for this class, grouped per student
-      // per exam below so we can pick each student's most recent exam.
-      tx.examResult.findMany({
-        where: { student: { classId }, examSubject: { exam: { isPublished: true } } },
-        select: {
-          studentId: true,
-          isAbsent: true,
-          marksObtained: true,
-          examSubject: {
-            select: {
-              maxMarks: true,
-              exam: { select: { id: true, startDate: true, createdAt: true } },
-            },
+    // Run sequentially: these share the transaction's single pinned connection,
+    // and the node-postgres adapter cannot execute two queries on it at once.
+    const records = await tx.attendance.findMany({
+      where: { classId, date: { gte: start, lt: end } },
+      select: { studentId: true, status: true },
+    });
+    const flags = await tx.redFlag.findMany({
+      where: { status: "OPEN", student: { classId } },
+      select: { studentId: true },
+    });
+    // Marks: every published-exam result for this class, grouped per student
+    // per exam below so we can pick each student's most recent exam.
+    const results = await tx.examResult.findMany({
+      where: { student: { classId }, examSubject: { exam: { isPublished: true } } },
+      select: {
+        studentId: true,
+        isAbsent: true,
+        marksObtained: true,
+        examSubject: {
+          select: {
+            maxMarks: true,
+            exam: { select: { id: true, startDate: true, createdAt: true } },
           },
         },
-      }),
-      // Due fees: outstanding balance across the student's non-cancelled invoices.
-      tx.invoice.findMany({
-        where: { student: { classId }, status: { not: "CANCELLED" } },
-        select: { studentId: true, total: true, paidAmount: true },
-      }),
-    ]);
+      },
+    });
+    // Due fees: outstanding balance across the student's non-cancelled invoices.
+    const invoices = await tx.invoice.findMany({
+      where: { student: { classId }, status: { not: "CANCELLED" } },
+      select: { studentId: true, total: true, paidAmount: true },
+    });
 
     const present = new Map<string, number>();
     const marked = new Map<string, number>();

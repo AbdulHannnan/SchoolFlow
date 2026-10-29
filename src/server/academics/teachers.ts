@@ -190,12 +190,12 @@ export async function createAssignment(input: {
   const { schoolId } = await requireSchool();
   return withTenant(schoolId, async (tx) => {
     // All three must be visible in this tenant's context (RLS), so a foreign id
-    // can't be smuggled in.
-    const [teacher, subject, cls] = await Promise.all([
-      tx.user.findFirst({ where: { id: input.teacherId, role: "TEACHER" } }),
-      tx.subject.findUnique({ where: { id: input.subjectId } }),
-      tx.class.findUnique({ where: { id: input.classId } }),
-    ]);
+    // can't be smuggled in. Sequential: they share the transaction's single
+    // pinned connection, which the node-postgres adapter can't run two queries
+    // on at once.
+    const teacher = await tx.user.findFirst({ where: { id: input.teacherId, role: "TEACHER" } });
+    const subject = await tx.subject.findUnique({ where: { id: input.subjectId } });
+    const cls = await tx.class.findUnique({ where: { id: input.classId } });
     if (!teacher) throw new Error("Teacher not found");
     if (!subject) throw new Error("Subject not found");
     if (!cls) throw new Error("Class not found");

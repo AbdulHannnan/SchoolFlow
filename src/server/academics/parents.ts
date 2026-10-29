@@ -111,10 +111,10 @@ export async function linkStudent(input: {
 }) {
   const { schoolId } = await requireSchool();
   return withTenant(schoolId, async (tx) => {
-    const [parent, student] = await Promise.all([
-      tx.user.findFirst({ where: { id: input.parentId, role: "PARENT" } }),
-      tx.student.findUnique({ where: { id: input.studentId } }),
-    ]);
+    // Sequential: both share the transaction's single pinned connection, which
+    // the node-postgres adapter cannot run two queries on at once.
+    const parent = await tx.user.findFirst({ where: { id: input.parentId, role: "PARENT" } });
+    const student = await tx.student.findUnique({ where: { id: input.studentId } });
     if (!parent) throw new Error("Parent not found");
     if (!student) throw new Error("Student not found");
     return tx.parentStudent.create({
