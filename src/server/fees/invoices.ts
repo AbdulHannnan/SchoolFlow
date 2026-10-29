@@ -343,6 +343,68 @@ export async function getStudentLedger(studentId: string) {
   });
 }
 
+export type StudentFeeSummary = {
+  student: {
+    id: string;
+    name: string;
+    rollNumber: string | null;
+    sectionName: string | null;
+  };
+  invoiceCount: number;
+  billed: string;
+  paid: string;
+  balance: string;
+};
+
+/**
+ * Per-student fee summary for one class - the teacher's read-only view of what
+ * their students owe (billed / paid / balance across all their invoices). A
+ * TEACHER may only read a class they hold an assignment in (the same ownership
+ * rule as `listMyClassInvoices`); a HEAD may read any. Rows are the class's
+ * current active students. Tenant-scoped via `withTenant`.
+ */
+export async function listClassFeeSummaries(classId: string): Promise<StudentFeeSummary[]> {
+  const { user, schoolId } = await requireSchool();
+  return withTenant(schoolId, async (tx) => {
+    if (user.role === "TEACHER") {
+      const assigned = await tx.teacherAssignment.findFirst({
+        where: { teacherId: user.id, classId },
+        select: { id: true },
+      });
+      if (!assigned) throw new Error("You are not assigned to this class");
+    }
+
+    const students = await tx.student.findMany({
+      where: { classId, isActive: true },
+      orderBy: [{ rollNumber: "asc" }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        rollNumber: true,
+        section: { select: { name: true } },
+        invoices: { select: { total: true, paidAmount: true } },
+      },
+    });
+
+    return students.map((s) => {
+      const billed = sumAmounts(s.invoices.map((i) => i.total));
+      const paid = sumAmounts(s.invoices.map((i) => i.paidAmount));
+      return {
+        student: {
+          id: s.id,
+          name: s.name,
+          rollNumber: s.rollNumber,
+          sectionName: s.section?.name ?? null,
+        },
+        invoiceCount: s.invoices.length,
+        billed,
+        paid,
+        balance: (Number(billed) - Number(paid)).toFixed(2),
+      };
+    });
+  });
+}
+
 export type ChildLedgerSummary = {
   student: { id: string; name: string; className: string | null; sectionName: string | null };
   invoiceCount: number;

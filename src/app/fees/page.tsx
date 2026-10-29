@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { verifySession } from "@/server/auth/dal";
 import { listClassesWithSections } from "@/server/academics/classes";
-import { listChildrenLedgerSummaries } from "@/server/fees/invoices";
+import { listMarkableClasses } from "@/server/academics/attendance";
+import { listChildrenLedgerSummaries, listClassFeeSummaries } from "@/server/fees/invoices";
 import { listCategorySummaries } from "@/server/fees/category-report";
 import { currentMonth, monthLabel } from "@/lib/attendance";
 import { formatPKR } from "@/lib/money";
@@ -32,8 +33,128 @@ export default function FeesPage({ searchParams }: { searchParams: SearchParams 
 async function FeesContent({ searchParams }: { searchParams: SearchParams }) {
   const user = await verifySession();
   if (user.role === "PARENT") return <ParentFees />;
+  if (user.role === "TEACHER") return <TeacherFees searchParams={searchParams} />;
   if (user.role !== "HEAD") forbidden();
   return <FeeHeadOverview searchParams={searchParams} />;
+}
+
+/**
+ * TEACHER: read-only fee status for the students of the classes they teach.
+ * Teachers see only their assigned classes (not the school-wide figures), pick
+ * one, and see each student's billed / paid / outstanding balance.
+ */
+async function TeacherFees({ searchParams }: { searchParams: SearchParams }) {
+  const classes = await listMarkableClasses();
+
+  if (classes.length === 0) {
+    return (
+      <p className="text-muted-foreground text-sm">
+        You have no classes yet. A head can add classes and assign you to one.
+      </p>
+    );
+  }
+
+  const sp = await searchParams;
+  const selected = classes.find((c) => c.id === sp.classId) ?? classes[0];
+  const summaries = await listClassFeeSummaries(selected.id);
+
+  const totals = summaries.reduce(
+    (acc, s) => ({
+      billed: acc.billed + Number(s.billed),
+      paid: acc.paid + Number(s.paid),
+      balance: acc.balance + Number(s.balance),
+    }),
+    { billed: 0, paid: 0, balance: 0 },
+  );
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardContent className="pt-6">
+          <form method="get" className="flex flex-wrap items-end gap-2">
+            <div className="space-y-1">
+              <label htmlFor="classId" className="text-muted-foreground text-xs">
+                Class
+              </label>
+              <select
+                id="classId"
+                name="classId"
+                defaultValue={selected.id}
+                className="border-input dark:bg-input/30 h-9 rounded-md border bg-transparent px-2 text-sm"
+              >
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Button type="submit" variant="outline" size="sm">
+              Open
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            {selected.name}
+            <span className="text-muted-foreground ml-2 text-sm font-normal">fee status</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-4 text-sm">
+            <SummaryStat label="Billed" value={totals.billed} />
+            <SummaryStat label="Paid" value={totals.paid} />
+            <SummaryStat label="Outstanding" value={totals.balance} danger />
+          </div>
+        </CardContent>
+      </Card>
+
+      {summaries.length === 0 ? (
+        <p className="text-muted-foreground text-sm">No active students in this class.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-muted-foreground text-xs">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium">Roll</th>
+                <th className="px-3 py-2 text-left font-medium">Student</th>
+                <th className="px-3 py-2 text-right font-medium">Billed</th>
+                <th className="px-3 py-2 text-right font-medium">Paid</th>
+                <th className="px-3 py-2 text-right font-medium">Outstanding</th>
+              </tr>
+            </thead>
+            <tbody className="divide-border divide-y">
+              {summaries.map((s) => (
+                <tr key={s.student.id}>
+                  <td className="text-muted-foreground px-3 py-2">{s.student.rollNumber ?? "—"}</td>
+                  <td className="px-3 py-2">
+                    {s.student.name}
+                    {s.student.sectionName ? (
+                      <span className="text-muted-foreground ml-2 text-xs">
+                        {s.student.sectionName}
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className="px-3 py-2 text-right">{formatPKR(s.billed)}</td>
+                  <td className="px-3 py-2 text-right">{formatPKR(s.paid)}</td>
+                  <td
+                    className={`px-3 py-2 text-right ${
+                      Number(s.balance) > 0 ? "text-destructive" : "text-muted-foreground"
+                    }`}
+                  >
+                    {Number(s.balance) > 0 ? formatPKR(s.balance) : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
