@@ -221,6 +221,14 @@ export type ClassProgressRow = {
   presentRate: number | null;
   markedDays: number;
   openFlags: number;
+  /** Overall percentage of the student's most recent published exam, or null
+   * when they have no marks in any published exam. */
+  marksPercent: number | null;
+  /** Letter grade for `marksPercent`, or null when there are no marks. */
+  marksGrade: string | null;
+  /** Outstanding fee balance (sum of non-cancelled invoice balances) as a
+   * 2-dp rupee string; "0.00" when nothing is due. */
+  dueAmount: string;
 };
 
 /** Per-student quick stats for a class this month (HEAD any / TEACHER assigned). */
@@ -242,7 +250,7 @@ export async function listClassProgress(classId: string, input?: { month?: strin
     });
 
     const { start, end } = monthRange(month);
-    const [records, flags] = await Promise.all([
+    const [records, flags, results, invoices] = await Promise.all([
       tx.attendance.findMany({
         where: { classId, date: { gte: start, lt: end } },
         select: { studentId: true, status: true },
@@ -250,6 +258,27 @@ export async function listClassProgress(classId: string, input?: { month?: strin
       tx.redFlag.findMany({
         where: { status: "OPEN", student: { classId } },
         select: { studentId: true },
+      }),
+      // Marks: every published-exam result for this class, grouped per student
+      // per exam below so we can pick each student's most recent exam.
+      tx.examResult.findMany({
+        where: { student: { classId }, examSubject: { exam: { isPublished: true } } },
+        select: {
+          studentId: true,
+          isAbsent: true,
+          marksObtained: true,
+          examSubject: {
+            select: {
+              maxMarks: true,
+              exam: { select: { id: true, startDate: true, createdAt: true } },
+            },
+          },
+        },
+      }),
+      // Due fees: outstanding balance across the student's non-cancelled invoices.
+      tx.invoice.findMany({
+        where: { student: { classId }, status: { not: "CANCELLED" } },
+        select: { studentId: true, total: true, paidAmount: true },
       }),
     ]);
 
@@ -262,13 +291,50 @@ export async function listClassProgress(classId: string, input?: { month?: strin
     const flagCount = new Map<string, number>();
     for (const f of flags) flagCount.set(f.studentId, (flagCount.get(f.studentId) ?? 0) + 1);
 
+    // Per student, accumulate obtained/max per exam and remember how recent the
+    // exam is, so we can report the latest exam's overall percentage.
+    type ExamAccum = { sortKey: number; obtained: number; max: number; any: boolean };
+    const examsByStudent = new Map<string, Map<string, ExamAccum>>();
+    for (const r of results) {
+      const exam = r.examSubject.exam;
+      let byExam = examsByStudent.get(r.studentId);
+      if (!byExam) {
+        byExam = new Map();
+        examsByStudent.set(r.studentId, byExam);
+      }
+      const sortKey = (exam.startDate ?? exam.createdAt).getTime();
+      const cur = byExam.get(exam.id) ?? { sortKey, obtained: 0, max: 0, any: false };
+      if (!r.isAbsent && r.marksObtained !== null) {
+        cur.obtained += Number(r.marksObtained);
+        cur.max += Number(r.examSubject.maxMarks);
+        cur.any = true;
+      }
+      byExam.set(exam.id, cur);
+    }
+
+    const due = new Map<string, number>();
+    for (const inv of invoices) {
+      const balance = Number(inv.total) - Number(inv.paidAmount);
+      if (balance > 0) due.set(inv.studentId, (due.get(inv.studentId) ?? 0) + balance);
+    }
+
     const rows: ClassProgressRow[] = students.map((s) => {
       const total = marked.get(s.id) ?? 0;
+
+      const scored = [...(examsByStudent.get(s.id)?.values() ?? [])]
+        .filter((e) => e.any)
+        .sort((a, b) => b.sortKey - a.sortKey);
+      const latest = scored[0];
+      const marksPercent = latest ? percentage(latest.obtained, latest.max) : null;
+
       return {
         student: s,
         presentRate: presentRate(present.get(s.id) ?? 0, total),
         markedDays: total,
         openFlags: flagCount.get(s.id) ?? 0,
+        marksPercent,
+        marksGrade: marksPercent !== null ? letterGrade(marksPercent) : null,
+        dueAmount: (due.get(s.id) ?? 0).toFixed(2),
       };
     });
 

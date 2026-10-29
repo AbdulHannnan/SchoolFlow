@@ -18,6 +18,8 @@ import { getAllClassesProgress, listClassNotes } from "@/server/academics/class-
 import { deleteClassNoteAction } from "@/app/progress/actions";
 import { monthLabel, formatDay, todayISODate } from "@/lib/attendance";
 import { CLASS_NOTE_TYPE_BADGE, CLASS_NOTE_TYPE_LABELS } from "@/lib/class-notes";
+import { formatPercent } from "@/lib/grades";
+import { formatPKR } from "@/lib/money";
 
 export const metadata: Metadata = {
   title: "Progress - School Management",
@@ -176,6 +178,8 @@ async function TeacherClassRoster({ searchParams }: { searchParams: SearchParams
                     <th className="px-3 py-2 text-left font-medium">Roll</th>
                     <th className="px-3 py-2 text-left font-medium">Student</th>
                     <th className="px-3 py-2 text-right font-medium">Present</th>
+                    <th className="px-3 py-2 text-right font-medium">Marks</th>
+                    <th className="px-3 py-2 text-right font-medium">Due fees</th>
                     <th className="px-3 py-2 text-center font-medium">Flags</th>
                     <th className="px-3 py-2 text-right font-medium"></th>
                   </tr>
@@ -201,6 +205,21 @@ async function TeacherClassRoster({ searchParams }: { searchParams: SearchParams
                             ({row.markedDays}d)
                           </span>
                         ) : null}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {formatPercent(row.marksPercent)}
+                        {row.marksGrade ? (
+                          <span className="text-muted-foreground ml-1 text-xs">
+                            ({row.marksGrade})
+                          </span>
+                        ) : null}
+                      </td>
+                      <td
+                        className={`px-3 py-2 text-right ${
+                          Number(row.dueAmount) > 0 ? "text-destructive" : "text-muted-foreground"
+                        }`}
+                      >
+                        {Number(row.dueAmount) > 0 ? formatPKR(row.dueAmount) : "—"}
                       </td>
                       <td className="px-3 py-2 text-center">
                         {row.openFlags > 0 ? (
