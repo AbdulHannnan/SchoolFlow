@@ -999,10 +999,13 @@ model RedFlag {
   @@map("red_flags")
 }
 
-/// What kind of rule raised a red flag (Module 7.3).
+/// What kind of rule raised a red flag (Module 7.3). ATTENDANCE_LOW and
+/// GRADES_LOW are raised by the HEAD's automated scan; BEHAVIOR is a manual
+/// conduct flag a teacher raises against a student for something they did.
 enum RedFlagType {
   ATTENDANCE_LOW
   GRADES_LOW
+  BEHAVIOR
 
   @@map("red_flag_type")
 }

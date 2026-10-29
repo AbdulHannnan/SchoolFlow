@@ -10,10 +10,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { addBoxClass } from "@/components/ui/add-box";
 import { ScanRedFlagsForm } from "@/components/academics/scan-red-flags-form";
+import { RaiseBehaviorFlagForm } from "@/components/academics/raise-behavior-flag-form";
 import { reopenRedFlagAction, resolveRedFlagAction } from "@/app/red-flags/actions";
 import { verifySession } from "@/server/auth/dal";
 import { listMarkableClasses } from "@/server/academics/attendance";
-import { listRedFlags, type RedFlagRow } from "@/server/academics/red-flags";
+import {
+  listFlaggableClasses,
+  listMyBehaviorFlags,
+  listRedFlags,
+  type RedFlagRow,
+} from "@/server/academics/red-flags";
 import { currentMonth, formatDay } from "@/lib/attendance";
 
 export const metadata: Metadata = {
@@ -23,6 +29,7 @@ export const metadata: Metadata = {
 const TYPE_LABELS: Record<RedFlagType, string> = {
   ATTENDANCE_LOW: "Attendance",
   GRADES_LOW: "Grades",
+  BEHAVIOR: "Behaviour",
 };
 
 type SearchParams = Promise<{ status?: string }>;
@@ -39,6 +46,7 @@ export default function RedFlagsPage({ searchParams }: { searchParams: SearchPar
 
 async function RedFlagsContent({ searchParams }: { searchParams: SearchParams }) {
   const user = await verifySession();
+  if (user.role === "TEACHER") return <TeacherRedFlags />;
   if (user.role !== "HEAD") forbidden();
 
   const sp = await searchParams;
@@ -100,7 +108,57 @@ async function RedFlagsContent({ searchParams }: { searchParams: SearchParams })
   );
 }
 
-function FlagCard({ flag }: { flag: RedFlagRow }) {
+/** TEACHER: raise a behaviour flag and review the ones on their classes. */
+async function TeacherRedFlags() {
+  const [classes, flags] = await Promise.all([listFlaggableClasses(), listMyBehaviorFlags()]);
+
+  const hasStudents = classes.some((c) => c.students.length > 0);
+
+  return (
+    <div className="space-y-6">
+      <Card className={addBoxClass}>
+        <CardHeader>
+          <CardTitle className="text-base">Raise a red flag</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {hasStudents ? (
+            <>
+              <RaiseBehaviorFlagForm classes={classes} />
+              <p className="text-muted-foreground mt-3 text-xs">
+                Report a student&apos;s conduct - fighting, disruption, missing homework, anything
+                that needs following up. The head office is notified of every flag you raise.
+              </p>
+            </>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              You have no students in your classes yet. A head can assign you to a class and enrol
+              students.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium">Flags on your classes</h2>
+        {flags.length === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            No behaviour flags yet. Raise one above when a student needs it.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {flags.map((flag) => (
+              <li key={flag.id}>
+                <FlagCard flag={flag} readOnly />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function FlagCard({ flag, readOnly = false }: { flag: RedFlagRow; readOnly?: boolean }) {
   const resolved = flag.status === "RESOLVED";
   return (
     <Card>
@@ -126,7 +184,11 @@ function FlagCard({ flag }: { flag: RedFlagRow }) {
               ) : null}
             </div>
           </div>
-          {resolved ? (
+          {readOnly ? (
+            <Badge variant={resolved ? "secondary" : "outline"}>
+              {resolved ? "Resolved" : "Open"}
+            </Badge>
+          ) : resolved ? (
             <form action={reopenRedFlagAction}>
               <input type="hidden" name="id" value={flag.id} />
               <Button type="submit" size="sm" variant="outline">

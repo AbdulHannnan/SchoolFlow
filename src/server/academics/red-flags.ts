@@ -1,6 +1,7 @@
 import "server-only";
 
-import type { RedFlagType } from "@prisma/client";
+import type { Prisma, RedFlagType } from "@prisma/client";
+import type { Session } from "next-auth";
 
 import { requireSchool } from "@/server/auth/dal";
 import { withTenant } from "@/server/db/tenant";
@@ -290,6 +291,154 @@ export async function reopenRedFlag(id: string): Promise<void> {
     tx.redFlag.updateMany({
       where: { id },
       data: { status: "OPEN", resolvedById: null, resolvedAt: null },
+    }),
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * Manual behaviour flags (Module 7.3) - a teacher reports a student's conduct.
+ * ------------------------------------------------------------------------- */
+
+/** Who may flag a student: HEAD (any), TEACHER (a student in a class they're
+ * assigned to). Runs inside the tenant context, so lookups never cross schools. */
+async function assertCanFlagStudent(
+  tx: Prisma.TransactionClient,
+  user: Session["user"],
+  studentId: string,
+): Promise<void> {
+  if (user.role === "HEAD") return;
+  if (user.role === "TEACHER") {
+    const student = await tx.student.findFirst({
+      where: { id: studentId, class: { teacherAssignments: { some: { teacherId: user.id } } } },
+      select: { id: true },
+    });
+    if (!student) throw new Error("You are not assigned to this student's class");
+    return;
+  }
+  throw new Error("Not allowed to raise red flags");
+}
+
+export type FlaggableClass = {
+  id: string;
+  name: string;
+  students: { id: string; name: string; rollNumber: string | null }[];
+};
+
+/**
+ * The classes the signed-in teacher may raise behaviour flags for (the ones
+ * they hold an assignment in), each with its active students for the picker.
+ * A HEAD gets every class (they may flag any student).
+ */
+export async function listFlaggableClasses(): Promise<FlaggableClass[]> {
+  const { user, schoolId } = await requireSchool();
+  return withTenant(schoolId, (tx) =>
+    tx.class.findMany({
+      where:
+        user.role === "TEACHER" ? { teacherAssignments: { some: { teacherId: user.id } } } : {},
+      orderBy: [{ level: "asc" }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        students: {
+          where: { isActive: true },
+          orderBy: [{ rollNumber: "asc" }, { name: "asc" }],
+          select: { id: true, name: true, rollNumber: true },
+        },
+      },
+    }),
+  );
+}
+
+/**
+ * Raise a manual behaviour red flag against a student. Unlike the scan's rule
+ * flags, each report is a distinct incident, so the idempotency `key` is a
+ * fresh UUID (never upserted over). HEADs are alerted, with the reporter named
+ * in the alert. A TEACHER may only flag a student in a class they're assigned
+ * to; a HEAD may flag any. Tenant-scoped via `withTenant`.
+ */
+export async function raiseBehaviorFlag(input: {
+  studentId: string;
+  title: string;
+  detail: string;
+}): Promise<void> {
+  const { user, schoolId } = await requireSchool();
+
+  const { studentName, headIds } = await withTenant(schoolId, async (tx) => {
+    const student = await tx.student.findUnique({
+      where: { id: input.studentId },
+      select: { id: true, name: true },
+    });
+    if (!student) throw new Error("Student not found");
+    await assertCanFlagStudent(tx, user, input.studentId);
+
+    await tx.redFlag.create({
+      data: {
+        schoolId,
+        studentId: input.studentId,
+        type: "BEHAVIOR",
+        key: `BEHAVIOR:${crypto.randomUUID()}`,
+        title: input.title,
+        detail: input.detail,
+      },
+    });
+
+    const heads = await tx.user.findMany({
+      where: { role: "HEAD", isActive: true },
+      select: { id: true },
+    });
+    return { studentName: student.name, headIds: heads.map((h) => h.id) };
+  });
+
+  // Alert HEADs after the transaction commits, so a rolled-back write never
+  // notifies. The reporter is named in the reason (there is no stored author).
+  if (headIds.length > 0) {
+    const reporter = user.name ? ` (reported by ${user.name})` : "";
+    await dispatch({
+      type: "RED_FLAG",
+      schoolId,
+      recipientIds: headIds,
+      studentId: input.studentId,
+      studentName,
+      reason: `${input.title}${reporter}`,
+      channels: ["in-app"],
+    });
+  }
+}
+
+/**
+ * Behaviour flags for the signed-in teacher's classes (open first, then
+ * newest), so a teacher sees the conduct flags raised for their students. HEAD
+ * manages the full list on the main view; this is the teacher's read-back.
+ */
+export async function listMyBehaviorFlags(): Promise<RedFlagRow[]> {
+  const { user, schoolId } = await requireSchool();
+  return withTenant(schoolId, (tx) =>
+    tx.redFlag.findMany({
+      where: {
+        type: "BEHAVIOR",
+        ...(user.role === "TEACHER"
+          ? { student: { class: { teacherAssignments: { some: { teacherId: user.id } } } } }
+          : {}),
+      },
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        detail: true,
+        status: true,
+        createdAt: true,
+        resolvedAt: true,
+        student: {
+          select: {
+            id: true,
+            name: true,
+            rollNumber: true,
+            class: { select: { name: true } },
+            section: { select: { name: true } },
+          },
+        },
+      },
     }),
   );
 }

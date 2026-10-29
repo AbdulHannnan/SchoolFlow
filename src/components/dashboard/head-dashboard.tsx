@@ -19,6 +19,7 @@ import { formatPKR } from "@/lib/money";
 const RED_FLAG_LABELS: Record<RedFlagType, string> = {
   ATTENDANCE_LOW: "Attendance",
   GRADES_LOW: "Grades",
+  BEHAVIOR: "Behaviour",
 };
 
 /** The HEAD's school-wide overview (Module 9.1). */

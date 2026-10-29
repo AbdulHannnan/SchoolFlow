@@ -23,6 +23,7 @@ export const instant = false;
 const FLAG_LABELS: Record<RedFlagType, string> = {
   ATTENDANCE_LOW: "Attendance",
   GRADES_LOW: "Grades",
+  BEHAVIOR: "Behaviour",
 };
 
 type Params = Promise<{ studentId: string }>;
