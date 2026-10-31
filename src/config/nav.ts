@@ -47,12 +47,12 @@ export type NavItem = {
 export const navItems: NavItem[] = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard, description: "Overview and quick links", module: "9.1", ready: true }, // prettier-ignore
   { title: "Classes", href: "/classes", icon: Layers, description: "Grades and their sections", module: "2.1", ready: true }, // prettier-ignore
-  { title: "Subjects", href: "/subjects", icon: BookOpen, description: "Subjects defined per class", module: "2.2", ready: true, hideForRoles: ["TEACHER"] }, // prettier-ignore
-  { title: "Students", href: "/students", icon: GraduationCap, description: "Enrol and manage students", module: "2.4", ready: true, hideForRoles: ["TEACHER"] }, // prettier-ignore
-  { title: "Teachers", href: "/teachers", icon: Users, description: "Staff and class assignments", module: "2.3", ready: true, hideForRoles: ["TEACHER"] }, // prettier-ignore
+  { title: "Subjects", href: "/subjects", icon: BookOpen, description: "Subjects defined per class", module: "2.2", ready: true, hideForRoles: ["TEACHER", "PARENT"] }, // prettier-ignore
+  { title: "Students", href: "/students", icon: GraduationCap, description: "Enrol and manage students", module: "2.4", ready: true, hideForRoles: ["TEACHER", "PARENT"] }, // prettier-ignore
+  { title: "Teachers", href: "/teachers", icon: Users, description: "Staff and class assignments", module: "2.3", ready: true, hideForRoles: ["TEACHER", "PARENT"] }, // prettier-ignore
   { title: "Parents", href: "/parents", icon: Contact, description: "Guardians and student links", module: "2.5", ready: true, hideForRoles: ["TEACHER"] }, // prettier-ignore
   { title: "Attendance", href: "/attendance", icon: CalendarCheck, description: "Mark and review attendance", module: "3", ready: true, hideForRoles: ["TEACHER"] }, // prettier-ignore
-  { title: "Staff Attendance", href: "/staff-attendance", icon: UserCheck, description: "Mark and review staff attendance", module: "8.1", ready: true, hideForRoles: ["TEACHER"] }, // prettier-ignore
+  { title: "Staff Attendance", href: "/staff-attendance", icon: UserCheck, description: "Mark and review staff attendance", module: "8.1", ready: true, hideForRoles: ["TEACHER", "PARENT"] }, // prettier-ignore
   { title: "Planner", href: "/planner", icon: CalendarRange, description: "Teacher lesson-plan register", module: "8.2", ready: true }, // prettier-ignore
   { title: "Meetings", href: "/meetings", icon: CalendarClock, description: "Staff meetings and invites", module: "8.3", ready: true }, // prettier-ignore
   { title: "Homework", href: "/homework", icon: NotebookPen, description: "Daily diary and homework", module: "5", ready: true }, // prettier-ignore
