@@ -51,11 +51,15 @@ export async function getParentDashboard(): Promise<ParentDashboard> {
   await requireRole("PARENT");
   const { user, schoolId } = await requireSchool();
 
-  const [{ month, children: progress }, ledgers, diary] = await Promise.all([
-    listChildrenProgress(),
-    listChildrenLedgerSummaries(),
-    listChildrenDiary(),
-  ]);
+  // Run the tenant reads sequentially, not with Promise.all: each opens its own
+  // `withTenant` transaction, and the node-postgres adapter can't have two
+  // queries in flight on one connection at once. These reads also loop over the
+  // parent's children, so concurrent transactions reliably overlap and trip
+  // pg's "client is already executing a query" warning. Sequential is the
+  // adapter-safe pattern used elsewhere (see listClassProgress).
+  const { month, children: progress } = await listChildrenProgress();
+  const ledgers = await listChildrenLedgerSummaries();
+  const diary = await listChildrenDiary();
 
   const unread = await withTenant(schoolId, (tx) =>
     tx.notification.count({ where: { recipientId: user.id, readAt: null } }),
