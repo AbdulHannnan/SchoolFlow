@@ -209,6 +209,139 @@ async function getSchoolWhatsappNumber(tx: Prisma.TransactionClient, schoolId: s
   return num ? num : null;
 }
 
+export type StudentWeeklyReportView = {
+  weekLabel: string;
+  /** True once the school has set its WhatsApp sender number. */
+  whatsappConfigured: boolean;
+  /** How many parents are linked (0 means the report can't be sent to anyone). */
+  parentCount: number;
+  school: { name: string };
+  student: {
+    id: string;
+    name: string;
+    rollNumber: string | null;
+    className: string | null;
+    sectionName: string | null;
+  };
+  attendance: { present: number; absent: number; late: number; leave: number; total: number };
+  performance: { examName: string; percent: number; grade: string } | null;
+  openFlags: { id: string; title: string; detail: string; createdAt: Date }[];
+};
+
+/**
+ * Read a single student's weekly report for display (the "open report" view on
+ * the students page). Same week window and figures the send uses, but shaped
+ * for rendering a classic report rather than a WhatsApp line. HEAD-only in
+ * practice: the calling page requires HEAD.
+ */
+export async function getStudentWeeklyReport(studentId: string): Promise<StudentWeeklyReportView> {
+  const { schoolId } = await requireSchool();
+  const { start, end } = currentWeekRange();
+  const label = weekLabel(start, end);
+
+  return withTenant(schoolId, async (tx) => {
+    const school = await tx.school.findUnique({
+      where: { id: schoolId },
+      select: { name: true, whatsappNumber: true },
+    });
+    if (!school) throw new Error("School not found");
+
+    const student = await tx.student.findUnique({
+      where: { id: studentId },
+      select: {
+        id: true,
+        name: true,
+        rollNumber: true,
+        class: { select: { name: true } },
+        section: { select: { name: true } },
+      },
+    });
+    if (!student) throw new Error("Student not found");
+
+    // Week attendance tally.
+    const records = await tx.attendance.findMany({
+      where: { studentId, date: { gte: start, lt: end } },
+      select: { status: true },
+    });
+    const attendance = { present: 0, absent: 0, late: 0, leave: 0, total: 0 };
+    for (const r of records) {
+      if (r.status === "PRESENT") attendance.present += 1;
+      else if (r.status === "ABSENT") attendance.absent += 1;
+      else if (r.status === "LATE") attendance.late += 1;
+      else if (r.status === "LEAVE") attendance.leave += 1;
+      attendance.total += 1;
+    }
+
+    // Latest published-exam overall performance.
+    const results = await tx.examResult.findMany({
+      where: { studentId, examSubject: { exam: { isPublished: true } } },
+      select: {
+        isAbsent: true,
+        marksObtained: true,
+        examSubject: {
+          select: {
+            maxMarks: true,
+            exam: { select: { id: true, name: true, startDate: true, createdAt: true } },
+          },
+        },
+      },
+    });
+    const byExam = new Map<
+      string,
+      { name: string; sortKey: number; obtained: number; max: number; any: boolean }
+    >();
+    for (const r of results) {
+      const exam = r.examSubject.exam;
+      const cur = byExam.get(exam.id) ?? {
+        name: exam.name,
+        sortKey: (exam.startDate ?? exam.createdAt).getTime(),
+        obtained: 0,
+        max: 0,
+        any: false,
+      };
+      if (!r.isAbsent && r.marksObtained !== null) {
+        cur.obtained += Number(r.marksObtained);
+        cur.max += Number(r.examSubject.maxMarks);
+        cur.any = true;
+      }
+      byExam.set(exam.id, cur);
+    }
+    const latest = [...byExam.values()]
+      .filter((e) => e.any)
+      .sort((a, b) => b.sortKey - a.sortKey)[0];
+    const pct = latest ? percentage(latest.obtained, latest.max) : null;
+    const performance =
+      latest && pct !== null
+        ? { examName: latest.name, percent: pct, grade: letterGrade(pct) }
+        : null;
+
+    const openFlags = await tx.redFlag.findMany({
+      where: { studentId, status: "OPEN" },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, title: true, detail: true, createdAt: true },
+    });
+
+    const parentCount = await tx.parentStudent.count({ where: { studentId } });
+
+    return {
+      weekLabel: label,
+      whatsappConfigured: !!school.whatsappNumber?.trim(),
+      parentCount,
+      school: { name: school.name },
+      student: {
+        id: student.id,
+        name: student.name,
+        rollNumber: student.rollNumber,
+        className: student.class?.name ?? null,
+        sectionName: student.section?.name ?? null,
+      },
+      attendance,
+      performance,
+      openFlags,
+    };
+  });
+}
+
 /** Dispatch the collected reports to each student's parents. Shared by the
  * single-student and whole-class entry points. */
 async function sendReports(

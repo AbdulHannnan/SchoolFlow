@@ -147,12 +147,20 @@ async function ClassRoster({ classId }: { classId: string }) {
             students={students}
             actions={(student) => (
               <>
-                <Link
-                  href={`/attendance/${student.id}`}
-                  className="text-muted-foreground hover:text-foreground text-xs underline-offset-2 hover:underline"
-                >
-                  Attendance
-                </Link>
+                <div className="flex flex-col items-end gap-1">
+                  <Link
+                    href={`/attendance/${student.id}`}
+                    className="text-muted-foreground hover:text-foreground text-xs underline-offset-2 hover:underline"
+                  >
+                    Attendance
+                  </Link>
+                  <Link
+                    href={`/students/${student.id}/report`}
+                    className="text-muted-foreground hover:text-foreground text-xs underline-offset-2 hover:underline"
+                  >
+                    Report
+                  </Link>
+                </div>
                 <StudentActions student={student} classId={cls.id} classes={classOptions} />
               </>
             )}

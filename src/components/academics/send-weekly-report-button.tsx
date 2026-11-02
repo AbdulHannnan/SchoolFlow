@@ -12,14 +12,20 @@ import { initialFormState } from "@/app/progress/form-state";
  * it. Stays inert until the school's WhatsApp number is set, in which case the
  * action returns a clear setup message.
  */
-export function SendWeeklyReportButton({ studentId }: { studentId: string }) {
+export function SendWeeklyReportButton({
+  studentId,
+  label = "Send weekly report",
+}: {
+  studentId: string;
+  label?: string;
+}) {
   const [state, action, pending] = useActionState(sendStudentWeeklyReportAction, initialFormState);
 
   return (
     <form action={action} className="flex flex-wrap items-center gap-3">
       <input type="hidden" name="studentId" value={studentId} />
-      <Button type="submit" size="sm" variant="secondary" disabled={pending}>
-        {pending ? "Sending..." : "Send weekly report"}
+      <Button type="submit" size="sm" disabled={pending}>
+        {pending ? "Sending..." : label}
       </Button>
       {state.status === "success" ? (
         <p className="text-muted-foreground text-sm">{state.message}</p>
