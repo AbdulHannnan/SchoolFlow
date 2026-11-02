@@ -10,6 +10,7 @@ import { ProgressClassPicker } from "@/components/academics/progress-class-picke
 import { MonthNav } from "@/components/academics/month-nav";
 import { AllClassesProgress } from "@/components/academics/all-classes-progress";
 import { ClassNoteForm } from "@/components/academics/class-note-form";
+import { SendClassWeeklyReportsForm } from "@/components/academics/send-class-weekly-reports-form";
 import { DeleteButton } from "@/components/academics/delete-button";
 import { verifySession } from "@/server/auth/dal";
 import { listMarkableClasses } from "@/server/academics/attendance";
@@ -73,6 +74,24 @@ async function HeadClassProgress({ searchParams }: { searchParams: SearchParams 
           <MonthNav month={data.month} />
         </div>
         <AllClassesProgress data={data} />
+      </section>
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-sm font-medium">Send weekly reports via WhatsApp</h2>
+          <p className="text-muted-foreground text-sm">
+            Send each student&apos;s weekly snapshot - attendance, performance and red flags - to
+            their parents. Pick a class to send the whole class at once, or send one student from
+            their progress page.
+          </p>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <SendClassWeeklyReportsForm
+              classes={classes.map((c) => ({ id: c.id, name: c.name }))}
+            />
+          </CardContent>
+        </Card>
       </section>
 
       <section className="space-y-4">

@@ -31,7 +31,14 @@ model School {
   email    String?
   phone    String?
   address  String?
-  isActive Boolean @default(true)
+  /// The school's own WhatsApp sender number in E.164 form (e.g.
+  /// "923001234567"), shown as the "from" of weekly-report messages. Optional
+  /// and left blank until the school connects its WhatsApp Business number; the
+  /// weekly-report send is gated on it being set. The Cloud API transport still
+  /// authenticates with WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_ACCESS_TOKEN, which
+  /// must correspond to this number.
+  whatsappNumber String?
+  isActive       Boolean @default(true)
 
   users                  User[]
   classes                Class[]
@@ -1165,6 +1172,7 @@ enum NotificationType {
   FEE_REMINDER
   RED_FLAG
   MEETING
+  WEEKLY_REPORT
 
   @@map("notification_type")
 }

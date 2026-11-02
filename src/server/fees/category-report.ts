@@ -136,11 +136,7 @@ export type CategoryBreakdown = {
 };
 
 /** Derive a per-category status from its billed/paid share of one invoice. */
-function rowStatus(
-  charged: number,
-  paid: number,
-  invoiceStatus: InvoiceStatus,
-): InvoiceStatus {
+function rowStatus(charged: number, paid: number, invoiceStatus: InvoiceStatus): InvoiceStatus {
   if (invoiceStatus === "CANCELLED") return "CANCELLED";
   if (paid <= 0) return "UNPAID";
   if (paid + 0.005 >= charged) return "PAID";

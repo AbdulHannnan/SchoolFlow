@@ -276,15 +276,7 @@ async function FeeHeadOverview({ searchParams }: { searchParams: SearchParams })
   );
 }
 
-function SummaryStat({
-  label,
-  value,
-  danger,
-}: {
-  label: string;
-  value: number;
-  danger?: boolean;
-}) {
+function SummaryStat({ label, value, danger }: { label: string; value: number; danger?: boolean }) {
   return (
     <div>
       <p className="text-muted-foreground text-xs">{label}</p>

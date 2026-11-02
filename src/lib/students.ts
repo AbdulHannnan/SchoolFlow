@@ -18,7 +18,9 @@ export function ageFromDob(dob: Date): number {
 
 /** Format a normalized 13-digit CNIC as XXXXX-XXXXXXX-X; pass anything else through. */
 export function formatCnic(cnic: string): string {
-  return /^\d{13}$/.test(cnic) ? `${cnic.slice(0, 5)}-${cnic.slice(5, 12)}-${cnic.slice(12)}` : cnic;
+  return /^\d{13}$/.test(cnic)
+    ? `${cnic.slice(0, 5)}-${cnic.slice(5, 12)}-${cnic.slice(12)}`
+    : cnic;
 }
 
 const GENDER_LABELS: Record<Gender, string> = {

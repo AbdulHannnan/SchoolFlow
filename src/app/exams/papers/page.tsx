@@ -95,7 +95,11 @@ async function TeacherPapers() {
             <CardTitle className="text-base">Submit a paper for review</CardTitle>
           </CardHeader>
           <CardContent>
-            <SubmitPaperForm classes={classOptions} subjects={subjectOptions} today={todayISODate()} />
+            <SubmitPaperForm
+              classes={classOptions}
+              subjects={subjectOptions}
+              today={todayISODate()}
+            />
           </CardContent>
         </Card>
       )}

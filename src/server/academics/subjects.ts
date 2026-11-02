@@ -26,7 +26,11 @@ export async function listMySubjects(): Promise<MySubjectGroup[]> {
   return withTenant(schoolId, async (tx) => {
     const rows = await tx.teacherAssignment.findMany({
       where: { teacherId: user.id },
-      orderBy: [{ subject: { name: "asc" } }, { class: { level: "asc" } }, { class: { name: "asc" } }],
+      orderBy: [
+        { subject: { name: "asc" } },
+        { class: { level: "asc" } },
+        { class: { name: "asc" } },
+      ],
       select: {
         subjectId: true,
         subject: { select: { name: true, code: true } },

@@ -91,6 +91,20 @@ export type AppEvent =
       meetingTitle: string;
       when: string;
       location: string | null;
+    })
+  | (BaseEvent & {
+      /** A HEAD sent a student's weekly report. Recipients are the student's
+       * linked parents. Carries the already-rendered report lines (attendance,
+       * performance, red flags) so the in-app message and the WhatsApp template
+       * render without another lookup. */
+      type: "WEEKLY_REPORT";
+      studentId: string;
+      studentName: string;
+      /** Human-readable week range, e.g. "27 Oct 2026 - 02 Nov 2026". */
+      weekLabel: string;
+      attendance: string;
+      performance: string;
+      redFlags: string;
     });
 
 /** Every implemented channel, keyed by name for per-event targeting. */
@@ -178,6 +192,29 @@ function renderEvent(event: AppEvent): NotificationMessage[] {
           title: event.meetingTitle,
           when: event.when,
           location: event.location,
+        },
+      }));
+    case "WEEKLY_REPORT":
+      return event.recipientIds.map((recipientId) => ({
+        recipientId,
+        type: "WEEKLY_REPORT",
+        title: `Weekly report for ${event.studentName}`,
+        body: [
+          `${event.studentName} - week of ${event.weekLabel}`,
+          `Attendance: ${event.attendance}`,
+          `Performance: ${event.performance}`,
+          `Red flags: ${event.redFlags}`,
+        ].join("\n"),
+        // Keys consumed by the WhatsApp template (studentName, weekLabel,
+        // attendance, performance, redFlags); studentId backs an in-app deep
+        // link to the child's progress.
+        data: {
+          studentId: event.studentId,
+          studentName: event.studentName,
+          weekLabel: event.weekLabel,
+          attendance: event.attendance,
+          performance: event.performance,
+          redFlags: event.redFlags,
         },
       }));
   }

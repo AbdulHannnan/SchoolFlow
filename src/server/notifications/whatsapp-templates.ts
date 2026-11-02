@@ -53,4 +53,19 @@ export const WHATSAPP_TEMPLATES: Partial<Record<NotificationType, WhatsAppTempla
       dataString(message.data, "amount") ?? "",
     ],
   },
+  // Approved body, e.g.: "Weekly report for {{1}} (week of {{2}}).
+  // Attendance: {{3}}. Performance: {{4}}. Red flags: {{5}}." The HEAD-initiated
+  // weekly-report flow populates data.studentName, data.weekLabel,
+  // data.attendance, data.performance and data.redFlags when it emits the event.
+  WEEKLY_REPORT: {
+    name: process.env.WHATSAPP_TEMPLATE_WEEKLY_REPORT ?? "weekly_report",
+    languageCode: process.env.WHATSAPP_TEMPLATE_LANGUAGE ?? "en",
+    buildBodyParameters: (message) => [
+      dataString(message.data, "studentName") ?? message.title,
+      dataString(message.data, "weekLabel") ?? "",
+      dataString(message.data, "attendance") ?? "",
+      dataString(message.data, "performance") ?? "",
+      dataString(message.data, "redFlags") ?? "",
+    ],
+  },
 };

@@ -33,10 +33,7 @@ import {
   listSubjectOptions,
 } from "@/server/academics/classes";
 import { listMyClassStudents } from "@/server/academics/students";
-import {
-  getClassAttendanceForDate,
-  getClassAttendanceMonth,
-} from "@/server/academics/attendance";
+import { getClassAttendanceForDate, getClassAttendanceMonth } from "@/server/academics/attendance";
 import { listMyClassSchedule } from "@/server/academics/teachers";
 import { listMyClassInvoices } from "@/server/fees/invoices";
 import { WEEKDAY_LABELS, periodTime } from "@/lib/timetable";
@@ -78,11 +75,8 @@ async function ClassesContent({ searchParams }: { searchParams: SearchParams }) 
     const sp = await searchParams;
     // Drill-down: a selected class shows its tabbed detail; otherwise the list.
     if (sp.classId) {
-      const tab: TabKey =
-        sp.tab === "attendance" || sp.tab === "fee" ? sp.tab : "info";
-      return (
-        <TeacherClassDetail classId={sp.classId} tab={tab} date={sp.date} month={sp.month} />
-      );
+      const tab: TabKey = sp.tab === "attendance" || sp.tab === "fee" ? sp.tab : "info";
+      return <TeacherClassDetail classId={sp.classId} tab={tab} date={sp.date} month={sp.month} />;
     }
     return <TeacherClasses teacherId={user.id} />;
   }
@@ -240,63 +234,63 @@ async function TeacherClasses({ teacherId }: { teacherId: string }) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-              <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                <span className="flex items-center gap-1.5">
-                  <UserIcon className="size-4" />
-                  {cls.classTeacher ? (
-                    <span className="text-foreground font-medium">{cls.classTeacher.name}</span>
-                  ) : (
-                    "No class teacher"
-                  )}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <GraduationCap className="size-4" />
-                  <span className="text-foreground font-medium">{cls._count.students}</span>
-                  {cls._count.students === 1 ? "student" : "students"}
-                </span>
-              </div>
-
-              {mySubjects.length > 0 ? (
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-muted-foreground text-sm">You teach:</span>
-                  {mySubjects.map((a) => (
-                    <Badge key={a.id} variant="secondary">
-                      {a.subject.name}
-                    </Badge>
-                  ))}
+                <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                  <span className="flex items-center gap-1.5">
+                    <UserIcon className="size-4" />
+                    {cls.classTeacher ? (
+                      <span className="text-foreground font-medium">{cls.classTeacher.name}</span>
+                    ) : (
+                      "No class teacher"
+                    )}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <GraduationCap className="size-4" />
+                    <span className="text-foreground font-medium">{cls._count.students}</span>
+                    {cls._count.students === 1 ? "student" : "students"}
+                  </span>
                 </div>
-              ) : null}
 
-              {cls.sections.length === 0 ? (
-                <p className="text-muted-foreground text-sm">
-                  {cls.hasSections
-                    ? "No sections yet."
-                    : "No sections - students enrol directly into the class."}
-                </p>
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {cls.sections.map((section) => (
-                    <div key={section.id} className="bg-muted/30 rounded-lg border p-3">
-                      <p className="font-medium">{section.name}</p>
-                      <div className="text-muted-foreground mt-1 space-y-1 text-sm">
-                        <span className="flex items-center gap-1.5">
-                          <UserIcon className="size-4" />
-                          {section.sectionTeacher ? (
-                            <span className="text-foreground">{section.sectionTeacher.name}</span>
-                          ) : (
-                            "No teacher"
-                          )}
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <GraduationCap className="size-4" />
-                          <span className="text-foreground">{section._count.students}</span>
-                          {section._count.students === 1 ? "student" : "students"}
-                        </span>
+                {mySubjects.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-muted-foreground text-sm">You teach:</span>
+                    {mySubjects.map((a) => (
+                      <Badge key={a.id} variant="secondary">
+                        {a.subject.name}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
+
+                {cls.sections.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    {cls.hasSections
+                      ? "No sections yet."
+                      : "No sections - students enrol directly into the class."}
+                  </p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {cls.sections.map((section) => (
+                      <div key={section.id} className="bg-muted/30 rounded-lg border p-3">
+                        <p className="font-medium">{section.name}</p>
+                        <div className="text-muted-foreground mt-1 space-y-1 text-sm">
+                          <span className="flex items-center gap-1.5">
+                            <UserIcon className="size-4" />
+                            {section.sectionTeacher ? (
+                              <span className="text-foreground">{section.sectionTeacher.name}</span>
+                            ) : (
+                              "No teacher"
+                            )}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <GraduationCap className="size-4" />
+                            <span className="text-foreground">{section._count.students}</span>
+                            {section._count.students === 1 ? "student" : "students"}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </Link>
@@ -363,9 +357,7 @@ async function TeacherClassDetail({
               href={`/classes?classId=${encodeURIComponent(classId)}&tab=${t.key}`}
               className={cn(
                 "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                active
-                  ? "bg-background text-foreground shadow-sm"
-                  : "hover:text-foreground",
+                active ? "bg-background text-foreground shadow-sm" : "hover:text-foreground",
               )}
             >
               {t.label}

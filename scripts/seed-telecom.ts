@@ -73,23 +73,93 @@ async function chunked<T>(items: T[], size: number, fn: (item: T) => Promise<unk
 
 // --- Name pools ------------------------------------------------------------
 const MALE_FIRST = [
-  "Ahmed", "Ali", "Hassan", "Hussain", "Bilal", "Usman", "Omar", "Hamza", "Saad", "Zain",
-  "Faizan", "Talha", "Daniyal", "Ibrahim", "Abdullah", "Rehan", "Shahzaib", "Arsalan", "Fahad", "Haris",
+  "Ahmed",
+  "Ali",
+  "Hassan",
+  "Hussain",
+  "Bilal",
+  "Usman",
+  "Omar",
+  "Hamza",
+  "Saad",
+  "Zain",
+  "Faizan",
+  "Talha",
+  "Daniyal",
+  "Ibrahim",
+  "Abdullah",
+  "Rehan",
+  "Shahzaib",
+  "Arsalan",
+  "Fahad",
+  "Haris",
 ] as const;
 const FEMALE_FIRST = [
-  "Ayesha", "Fatima", "Zainab", "Maryam", "Hira", "Sana", "Noor", "Aiman", "Mahnoor", "Iqra",
-  "Rabia", "Amna", "Laiba", "Eman", "Dua", "Areeba", "Sidra", "Komal", "Mehwish", "Warda",
+  "Ayesha",
+  "Fatima",
+  "Zainab",
+  "Maryam",
+  "Hira",
+  "Sana",
+  "Noor",
+  "Aiman",
+  "Mahnoor",
+  "Iqra",
+  "Rabia",
+  "Amna",
+  "Laiba",
+  "Eman",
+  "Dua",
+  "Areeba",
+  "Sidra",
+  "Komal",
+  "Mehwish",
+  "Warda",
 ] as const;
 const SURNAMES = [
-  "Khan", "Malik", "Raza", "Sheikh", "Ahmed", "Butt", "Chaudhry", "Qureshi", "Siddiqui", "Hashmi",
-  "Baig", "Farooqi", "Awan", "Gondal", "Dar", "Kiani", "Abbasi", "Mughal", "Rana", "Cheema",
-  "Zafar", "Nawaz", "Iqbal", "Javed", "Aslam", "Bhatti", "Memon", "Shah", "Jutt", "Lodhi",
+  "Khan",
+  "Malik",
+  "Raza",
+  "Sheikh",
+  "Ahmed",
+  "Butt",
+  "Chaudhry",
+  "Qureshi",
+  "Siddiqui",
+  "Hashmi",
+  "Baig",
+  "Farooqi",
+  "Awan",
+  "Gondal",
+  "Dar",
+  "Kiani",
+  "Abbasi",
+  "Mughal",
+  "Rana",
+  "Cheema",
+  "Zafar",
+  "Nawaz",
+  "Iqbal",
+  "Javed",
+  "Aslam",
+  "Bhatti",
+  "Memon",
+  "Shah",
+  "Jutt",
+  "Lodhi",
 ] as const;
 
 const TEACHER_NAMES = [
-  "Mr. Imran Qadri", "Ms. Saima Yousuf", "Mr. Tariq Mehmood", "Ms. Nadia Aslam",
-  "Mr. Kamran Shah", "Ms. Farah Deen", "Mr. Waqas Ahmed", "Ms. Hina Pervaiz",
-  "Mr. Asif Nawaz", "Ms. Rukhsana Bibi",
+  "Mr. Imran Qadri",
+  "Ms. Saima Yousuf",
+  "Mr. Tariq Mehmood",
+  "Ms. Nadia Aslam",
+  "Mr. Kamran Shah",
+  "Ms. Farah Deen",
+  "Mr. Waqas Ahmed",
+  "Ms. Hina Pervaiz",
+  "Mr. Asif Nawaz",
+  "Ms. Rukhsana Bibi",
 ] as const;
 
 const ALL_SUBJECTS = [
@@ -290,7 +360,8 @@ async function main() {
         name: `${first} ${surname}`,
         rollNumber: String(q.roll++),
         fatherName,
-        fatherCnic: String(randInt(10, 99)) + String(randInt(1000000000000, 9999999999999)).slice(0, 11),
+        fatherCnic:
+          String(randInt(10, 99)) + String(randInt(1000000000000, 9999999999999)).slice(0, 11),
         gender,
         dateOfBirth: new Date(Date.UTC(birthYear, randInt(0, 11), randInt(1, 28))),
         admissionDate: new Date(Date.UTC(nowYear - randInt(0, 3), randInt(0, 11), randInt(1, 28))),
@@ -391,13 +462,23 @@ async function main() {
   // --- Planner: last 4 school days for each assignment --------------------
   const plannerDays = recentSchoolDays(4);
   const topicsBySubject: Record<string, string[]> = {
-    English: ["Reading comprehension", "Tenses revision", "Creative writing", "Vocabulary building"],
+    English: [
+      "Reading comprehension",
+      "Tenses revision",
+      "Creative writing",
+      "Vocabulary building",
+    ],
     Urdu: ["Nazm ki tashreeh", "Grammar - Ism o Fail", "Mazmoon nawesi", "Sabaq ka khulasa"],
     Mathematics: ["Multiplication drills", "Fractions", "Geometry basics", "Word problems"],
     Science: ["States of matter", "The human body", "Plants and photosynthesis", "Simple machines"],
     "Social Studies": ["Map of Pakistan", "Our community", "Famous leaders", "Natural resources"],
     Islamiat: ["Kalma and their meaning", "Seerat-un-Nabi", "Akhlaqiat", "Namaz ki ahmiyat"],
-    "Computer Science": ["Parts of a computer", "Introduction to MS Paint", "Keyboard basics", "What is the internet"],
+    "Computer Science": [
+      "Parts of a computer",
+      "Introduction to MS Paint",
+      "Keyboard basics",
+      "What is the internet",
+    ],
     Art: ["Primary colours", "Still-life drawing", "Clay modelling", "Collage work"],
   };
   const plannerRows: {
@@ -427,7 +508,8 @@ async function main() {
         details: `Cover "${topic}" with class activity and board work. Q&A to close the lesson.`,
         homework: chance(0.6) ? `Exercise on "${topic}" - complete in notebook.` : null,
         // Older days are marked taught; the most recent stays planned.
-        status: date.getTime() < plannerDays[plannerDays.length - 1].getTime() ? "COMPLETED" : "PLANNED",
+        status:
+          date.getTime() < plannerDays[plannerDays.length - 1].getTime() ? "COMPLETED" : "PLANNED",
       });
     }
   }
@@ -437,9 +519,13 @@ async function main() {
 
   // --- Fees ---------------------------------------------------------------
   const catTuition = await prisma.feeCategory.create({ data: { schoolId: sid, name: "Tuition" } });
-  const catAdmission = await prisma.feeCategory.create({ data: { schoolId: sid, name: "Admission" } });
+  const catAdmission = await prisma.feeCategory.create({
+    data: { schoolId: sid, name: "Admission" },
+  });
   const catExam = await prisma.feeCategory.create({ data: { schoolId: sid, name: "Exam Fee" } });
-  const catTransport = await prisma.feeCategory.create({ data: { schoolId: sid, name: "Transport" } });
+  const catTransport = await prisma.feeCategory.create({
+    data: { schoolId: sid, name: "Transport" },
+  });
 
   // Monthly tuition rises with class level; a flat transport fee for opt-ins.
   const tuitionByClass = new Map<string, number>();
@@ -526,7 +612,12 @@ async function main() {
     });
 
     const lineItems = [
-      { schoolId: sid, invoiceId: invoice.id, description: "Monthly tuition", amount: tuition.toFixed(2) },
+      {
+        schoolId: sid,
+        invoiceId: invoice.id,
+        description: "Monthly tuition",
+        amount: tuition.toFixed(2),
+      },
     ];
     if (takesTransport) {
       lineItems.push({

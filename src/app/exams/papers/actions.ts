@@ -59,7 +59,11 @@ export async function submitExamPaperAction(
 
   const parsed = parsePaper(formData);
   if (!parsed.success) {
-    return { status: "error", message: "Please fix the errors.", fieldErrors: fieldErrorsOf(parsed.error) };
+    return {
+      status: "error",
+      message: "Please fix the errors.",
+      fieldErrors: fieldErrorsOf(parsed.error),
+    };
   }
 
   try {
@@ -83,7 +87,11 @@ export async function updateExamPaperAction(
 
   const parsed = parsePaper(formData);
   if (!parsed.success) {
-    return { status: "error", message: "Please fix the errors.", fieldErrors: fieldErrorsOf(parsed.error) };
+    return {
+      status: "error",
+      message: "Please fix the errors.",
+      fieldErrors: fieldErrorsOf(parsed.error),
+    };
   }
 
   try {

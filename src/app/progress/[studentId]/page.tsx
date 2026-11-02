@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { verifySession } from "@/server/auth/dal";
 import { getStudentProgress } from "@/server/academics/progress";
+import { SendWeeklyReportButton } from "@/components/academics/send-weekly-report-button";
 import { formatDay, monthLabel } from "@/lib/attendance";
 import { formatPercent } from "@/lib/grades";
 
@@ -41,7 +42,7 @@ export default function StudentProgressPage({ params }: { params: Params }) {
 async function StudentProgressContent({ params }: { params: Params }) {
   // getStudentProgress authorizes: HEAD any, TEACHER assigned class, PARENT a
   // linked child (and published exams / no red flags for parents).
-  await verifySession();
+  const viewer = await verifySession();
   const { studentId } = await params;
 
   let data: Awaited<ReturnType<typeof getStudentProgress>> | null = null;
@@ -62,14 +63,17 @@ async function StudentProgressContent({ params }: { params: Params }) {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">
-            {student.name}
-            <span className="text-muted-foreground ml-2 text-sm font-normal">
-              {student.class?.name ?? ""}
-              {student.section ? ` - ${student.section.name}` : ""}
-              {student.rollNumber ? ` · Roll ${student.rollNumber}` : ""}
-            </span>
-          </CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="text-base">
+              {student.name}
+              <span className="text-muted-foreground ml-2 text-sm font-normal">
+                {student.class?.name ?? ""}
+                {student.section ? ` - ${student.section.name}` : ""}
+                {student.rollNumber ? ` · Roll ${student.rollNumber}` : ""}
+              </span>
+            </CardTitle>
+            {viewer.role === "HEAD" ? <SendWeeklyReportButton studentId={student.id} /> : null}
+          </div>
         </CardHeader>
       </Card>
 

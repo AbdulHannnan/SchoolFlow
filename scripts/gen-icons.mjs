@@ -35,7 +35,9 @@ function svg({ size, frac, radius = 0 }) {
 }
 
 async function render(name, opts) {
-  await sharp(Buffer.from(svg(opts))).png().toFile(path.join(OUT, name));
+  await sharp(Buffer.from(svg(opts)))
+    .png()
+    .toFile(path.join(OUT, name));
   console.log("wrote", name);
 }
 
