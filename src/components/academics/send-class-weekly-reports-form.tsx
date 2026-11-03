@@ -49,7 +49,7 @@ export function SendClassWeeklyReportsForm({
           </select>
         </div>
         <Button type="submit" disabled={pending}>
-          {pending ? "Sending..." : "Send to whole class"}
+          {pending ? "Sending..." : "Send to all parents"}
         </Button>
       </div>
       {state.status === "success" ? (

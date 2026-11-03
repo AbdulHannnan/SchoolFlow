@@ -80,9 +80,9 @@ async function HeadClassProgress({ searchParams }: { searchParams: SearchParams 
         <div>
           <h2 className="text-sm font-medium">Send weekly reports via WhatsApp</h2>
           <p className="text-muted-foreground text-sm">
-            Send each student&apos;s weekly snapshot - attendance, performance and red flags - to
-            their parents. Pick a class to send the whole class at once, or send one student from
-            their progress page.
+            Pick a class and send every student&apos;s weekly snapshot - attendance, performance and
+            red flags - to each student&apos;s linked parents in one click. To send a single
+            student, open their report from the Students page.
           </p>
         </div>
         <Card>
