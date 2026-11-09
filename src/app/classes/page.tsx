@@ -148,6 +148,16 @@ async function ClassesContent({ searchParams }: { searchParams: SearchParams }) 
                     {cls._count.students === 1 ? "student" : "students"}
                   </span>
                 </div>
+                {cls.teacherAssignments.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-muted-foreground text-sm">Subject teachers:</span>
+                    {cls.teacherAssignments.map((a) => (
+                      <Badge key={a.id} variant="secondary">
+                        {a.subject.name} - {a.teacher.name}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
                 {cls.sections.length === 0 ? (
                   <p className="text-muted-foreground text-sm">
                     {cls.hasSections

@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { addBoxClass } from "@/components/ui/add-box";
 import { CreateTeacherForm } from "@/components/academics/create-teacher-form";
 import { DeleteButton } from "@/components/academics/delete-button";
@@ -63,8 +64,34 @@ async function TeachersContent() {
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-muted-foreground text-xs">Hired for (main subject)</p>
-                  <p className="text-sm font-medium">{teacher.mainSubject?.name ?? "-"}</p>
+                  <p className="text-sm font-medium">{teacher.mainSubject?.name ?? "Not set"}</p>
                 </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Teaches</p>
+                  {teacher.teacherAssignments.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">No subjects assigned yet.</p>
+                  ) : (
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {teacher.teacherAssignments.map((a) => (
+                        <Badge key={a.id} variant="secondary">
+                          {a.subject.name} - {a.class.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {teacher.classesLed.length > 0 ? (
+                  <div>
+                    <p className="text-muted-foreground text-xs">Class teacher of</p>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {teacher.classesLed.map((c) => (
+                        <Badge key={c.id} variant="outline">
+                          {c.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <Button asChild variant="outline" size="sm">
                   <Link href={`/teachers/${teacher.id}`}>
                     <CalendarClock className="size-4" />
