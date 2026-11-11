@@ -68,6 +68,7 @@ model School {
   meetingInvitees        MeetingInvitee[]
   examPapers             ExamPaper[]
   classNotes             ClassNote[]
+  staffMembers           StaffMember[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1068,6 +1069,53 @@ enum ClassNoteType {
   PARENT_COMMENT
 
   @@map("class_note_type")
+}
+
+/// A non-teaching staff member - a support worker (driver, gardener, maid,
+/// clerk, guard, etc.). Unlike teachers and parents these are not login
+/// accounts: it is a tenant record (like Student), a simple directory the HEAD
+/// maintains and views. `role` is the job category; when it is OTHER,
+/// `customRole` holds the free-text designation. `cnic` is the Pakistani CNIC
+/// (13 digits, stored normalized without dashes); `phone` is E.164-ish like
+/// `User.phone`. `monthlySalary` is an optional PKR amount (Decimal, serialized
+/// to a string before it crosses to a client component). Tenant-scoped via RLS;
+/// `schoolId` pins every row to one school (fail-closed without tenant context).
+model StaffMember {
+  id            String           @id @default(cuid())
+  schoolId      String
+  school        School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name          String
+  role          SupportStaffRole
+  customRole    String?
+  phone         String?
+  cnic          String?
+  address       String?
+  joiningDate   DateTime?        @db.Date
+  monthlySalary Decimal?         @db.Decimal(10, 2)
+  isActive      Boolean          @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId])
+  @@map("staff_members")
+}
+
+/// Job category of a non-teaching staff member. Common Pakistani school support
+/// roles; OTHER pairs with `StaffMember.customRole` for anything not listed.
+enum SupportStaffRole {
+  DRIVER
+  GARDENER
+  MAID
+  CLERK
+  GUARD
+  COOK
+  SWEEPER
+  PEON
+  ACCOUNTANT
+  OTHER
+
+  @@map("support_staff_role")
 }
 
 /// A delivered notification for one recipient (Module 4.1). This is the in-app
